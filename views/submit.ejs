@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提交代禱 - 教會祈禱牆</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <header class="header">
+        <h1>🙏 教會祈禱牆</h1>
+        <p>一同代禱，彼此守望</p>
+    </header>
+
+    <nav class="nav">
+        <a href="/">📖 祈禱牆</a>
+        <a href="/submit" class="active">✍️ 提交代禱</a>
+        <% if (admin) { %>
+            <a href="/admin">⚙️ 管理後台</a>
+            <% } else { %>
+                <a href="/admin/login">🔐 Admin</a>
+                <% } %>
+    </nav>
+
+    <main class="main">
+        <div class="card fade-in">
+            <h2 class="section-title">✍️ 提交代禱</h2>
+
+            <% if (success) { %>
+                <div class="alert alert-success">
+                    ✅ <%= success %>
+                </div>
+                <% } %>
+
+                    <% if (error) { %>
+                        <div class="alert alert-error">
+                            ❌ <%= error %>
+                        </div>
+                        <% } %>
+
+                            <% if (warning) { %>
+                                <div class="alert alert-warning">
+                                    ⚠️ <%= warning %>
+                                </div>
+                                <% } %>
+
+                                    <% if (!success) { %>
+                                        <form method="POST" action="/submit">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+                                            <div class="form-group">
+                                                <label class="form-label" for="displayName">署名（可選）</label>
+                                                <input type="text" id="displayName" name="displayName"
+                                                    class="form-input" placeholder="匿名" maxlength="50"
+                                                    value="<%= typeof displayName !== 'undefined' ? displayName : '' %>">
+                                                <p class="form-hint">留空即為匿名提交。請勿輸入全名或個人資料。</p>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label" for="content">代禱內容 *</label>
+                                                <textarea id="content" name="content" class="form-textarea"
+                                                    placeholder="請輸入代禱事項..." required
+                                                    maxlength="1000"><%= typeof content !== 'undefined' ? content : '' %></textarea>
+                                                <p class="form-hint">最多 1000 字。請勿輸入電話、電郵或地址等敏感資料。</p>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="form-label" for="expiryDate">顯示直到（可選）</label>
+                                                <input type="date" id="expiryDate" name="expiryDate" class="form-input"
+                                                    min="<%= new Date().toISOString().split('T')[0] %>">
+                                                <p class="form-hint">如不選擇，預設為 7 日後。</p>
+                                            </div>
+
+                                            <% if (warning) { %>
+                                                <div class="form-group">
+                                                    <label class="form-checkbox">
+                                                        <input type="checkbox" name="confirmSensitive" value="1"
+                                                            required>
+                                                        <span>我確認要提交，已明白內容可能包含敏感資料</span>
+                                                    </label>
+                                                </div>
+                                                <% } %>
+
+                                                    <button type="submit" class="btn btn-primary btn-block">
+                                                        🙏 提交代禱
+                                                    </button>
+                                        </form>
+                                        <% } else { %>
+                                            <div style="text-align: center; margin-top: 1rem;">
+                                                <a href="/submit" class="btn btn-outline">再提交一個代禱</a>
+                                                <a href="/" class="btn btn-primary">返回祈禱牆</a>
+                                            </div>
+                                            <% } %>
+        </div>
+
+        <div class="alert alert-info" style="margin-top: 1rem;">
+            <strong>提示：</strong> 代禱提交後需要經過審批才會公開。請耐心等候。
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %>
+        </p>
+    </footer>
+</body>
+
+</html>

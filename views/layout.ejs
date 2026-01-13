@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="教會祈禱牆 - 一同代禱">
+  <title><%= title %> - 教會祈禱牆</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="header">
+    <h1>🙏 教會祈禱牆</h1>
+    <p>一同代禱，彼此守望</p>
+  </header>
+  
+  <nav class="nav">
+    <a href="/" class="<%= typeof title !== 'undefined' && title === '祈禱牆' ? 'active' : '' %>">
+      📖 祈禱牆
+    </a>
+    <a href="/submit" class="<%= typeof title !== 'undefined' && title === '提交代禱' ? 'active' : '' %>">
+      ✍️ 提交代禱
+    </a>
+    <% if (admin) { %>
+      <a href="/admin" class="<%= typeof title !== 'undefined' && title === 'Admin Dashboard' ? 'active' : '' %>">
+        ⚙️ 管理後台
+      </a>
+    <% } %>
+  </nav>
+  
+  <main class="main">
+    <%- body %>
+  </main>
+  
+  <footer class="footer">
+    <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %></p>
+  </footer>
+</body>
+</html>

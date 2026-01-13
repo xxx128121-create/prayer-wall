@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代禱摘要 - 教會祈禱牆</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .digest-box {
+            background: #f5f5f5;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            min-height: 200px;
+            margin-bottom: 1rem;
+        }
+
+        .copy-success {
+            display: none;
+            color: var(--color-success);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <h1>🙏 教會祈禱牆</h1>
+        <p>代禱摘要</p>
+    </header>
+
+    <nav class="nav">
+        <a href="/">📖 祈禱牆</a>
+        <a href="/submit">✍️ 提交代禱</a>
+        <a href="/admin">⚙️ 管理後台</a>
+        <a href="/admin/digest" class="active">📋 生成摘要</a>
+        <a href="/admin/settings">👥 設定</a>
+    </nav>
+
+    <main class="main">
+        <div class="card fade-in">
+            <h2 class="section-title">📋 代禱摘要</h2>
+
+            <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                生成日期: <%= dateStr %> | 共 <%= prayerCount %> 個代禱事項
+            </p>
+
+            <div class="digest-box" id="digestText">
+                <%= digestText %>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button onclick="copyDigest()" class="btn btn-primary">
+                        📋 複製到剪貼板
+                    </button>
+                    <span class="copy-success" id="copySuccess">✅ 已複製！</span>
+                </div>
+
+                <div id="manualCopyArea" style="display: none;">
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">如果按鈕無效，請手動複製以下內容：
+                    </p>
+                    <textarea id="digestTextAreaFallback" style="width: 100%; height: 150px; padding: 0.5rem;"
+                        readonly></textarea>
+                </div>
+            </div>
+
+            <div class="alert alert-info" style="margin-top: 1rem;">
+                <strong>提示：</strong> 複製後可以直接貼去 WhatsApp 群組分享。
+                摘要只包含簡短內容（最多 50 字），保護代禱者私隱。
+            </div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+            <a href="/admin" class="btn btn-outline">← 返回後台</a>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %>
+        </p>
+    </footer>
+
+    <script>
+        function copyDigest() {
+            var text = document.getElementById('digestText').innerText;
+
+            // Try modern clipboard API first
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(function () {
+                    showCopySuccess();
+                }).catch(function () {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                var successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                } else {
+                    showManualCopy(text);
+                }
+            } catch (err) {
+                showManualCopy(text);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showManualCopy(text) {
+            var manualArea = document.getElementById('manualCopyArea');
+            var textAreaFallback = document.getElementById('digestTextAreaFallback');
+            textAreaFallback.value = text;
+            manualArea.style.display = 'block';
+            textAreaFallback.select();
+            alert('自動複製失敗，請手動複製顯示的文字。');
+        }
+
+        function showCopySuccess() {
+            document.getElementById('copySuccess').style.display = 'inline';
+            setTimeout(function () {
+                document.getElementById('copySuccess').style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin 登入 - 教會祈禱牆</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .login-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <h1>🔐 Admin 登入</h1>
+        <p>教會祈禱牆管理後台</p>
+    </header>
+
+    <div class="login-container">
+        <div class="card login-card fade-in">
+            <% if (typeof error !=='undefined' && error) { %>
+                <div class="alert alert-error">
+                    ❌ <%= error %>
+                </div>
+                <% } %>
+
+                    <form method="POST" action="/admin/login">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+                        <div class="form-group">
+                            <label class="form-label" for="username">帳號</label>
+                            <input type="text" id="username" name="username" class="form-input" required
+                                autocomplete="username">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="password">密碼</label>
+                            <input type="password" id="password" name="password" class="form-input" required
+                                autocomplete="current-password">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">
+                            登入
+                        </button>
+                    </form>
+
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <a href="/" style="color: var(--text-secondary);">← 返回祈禱牆</a>
+                    </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %>
+        </p>
+    </footer>
+</body>
+
+</html>
