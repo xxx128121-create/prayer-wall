@@ -6,6 +6,8 @@ node_modules/
 
 # Database
 db/*.db
+db/*.db-wal
+db/*.db-shm
 
 # Logs
 logs/*.jsonl
