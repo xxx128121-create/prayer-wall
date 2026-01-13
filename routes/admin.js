@@ -124,7 +124,8 @@ module.exports = function (db) {
         const adminUsername = req.session.admin.username;
 
         const prayer = db.prayerOps.getById.get(prayerId);
-        if (!prayer || prayer.status !== 'PENDING') {
+        // Allow rejecting if status is PENDING or APPROVED
+        if (!prayer || (prayer.status !== 'PENDING' && prayer.status !== 'APPROVED')) {
             return res.redirect('/admin');
         }
 
