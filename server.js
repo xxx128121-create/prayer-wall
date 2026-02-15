@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 
 const express = require('express');
 const session = require('express-session');
@@ -70,8 +70,8 @@ dbReady.then((db) => {
   // Error view
   app.get('/error', (req, res) => {
       res.render('error', {
-          title: 'éŒ¯èª¤',
-          message: 'ç™¼ç”Ÿäº†ä¸€äº›å•é¡Œ',
+          title: '錯誤',
+          message: '發生了一些問題',
           csrfToken: req.csrfToken()
       });
   });
@@ -79,8 +79,8 @@ dbReady.then((db) => {
   // 404 handler
   app.use((req, res) => {
       res.status(404).render('error', {
-          title: 'æ‰¾ä¸åˆ°é é¢',
-          message: 'ä½ è¦æ‰¾çš„é é¢ä¸å­˜åœ¨',
+          title: '找不到頁面',
+          message: '你要找的頁面不存在',
           csrfToken: req.csrfToken()
       });
   });
@@ -92,15 +92,15 @@ dbReady.then((db) => {
       // CSRF token errors
       if (err.code === 'EBADCSRFTOKEN') {
           return res.status(403).render('error', {
-              title: 'å®‰å…¨éŒ¯èª¤',
-              message: 'è¡¨å–®å·²éŽæœŸï¼Œè«‹é‡æ–°æ•´ç†é é¢å†è©¦',
+              title: '安全錯誤',
+              message: '表單已過期，請重新整理頁面再試',
               csrfToken: ''
           });
       }
 
       res.status(500).render('error', {
-          title: 'ä¼ºæœå™¨éŒ¯èª¤',
-          message: 'ç™¼ç”Ÿäº†ä¸€äº›å•é¡Œï¼Œè«‹ç¨å¾Œå†è©¦',
+          title: '伺服器錯誤',
+          message: '發生了一些問題，請稍後再試',
           csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
   });
