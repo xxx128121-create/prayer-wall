@@ -39,6 +39,11 @@ dbReady.then((db) => {
   // Static files
   app.use(express.static(path.join(__dirname, 'public')));
 
+  // Trust proxy (needed for secure cookies behind Render/other proxies)
+  if (process.env.NODE_ENV === 'production') {
+      app.set('trust proxy', 1);
+  }
+
   // Session configuration
   app.use(session({
       secret: process.env.SESSION_SECRET || 'prayer-wall-secret-change-this',
@@ -46,6 +51,7 @@ dbReady.then((db) => {
       saveUninitialized: false,
       cookie: {
           secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
           httpOnly: true,
           maxAge: 24 * 60 * 60 * 1000 // 24 hours
       }
