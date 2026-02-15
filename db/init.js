@@ -2,6 +2,7 @@ const initSqlJs = require('sql.js');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
+const initGoogleSheets = require('./google-sheets');
 
 // Ensure db directory exists
 const dbDir = path.join(__dirname);
@@ -351,4 +352,8 @@ async function initDatabase() {
   };
 }
 
-module.exports = initDatabase();
+if (process.env.STORAGE_BACKEND === 'google_sheets') {
+  module.exports = initGoogleSheets();
+} else {
+  module.exports = initDatabase();
+}

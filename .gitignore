@@ -7,7 +7,6 @@ node_modules/
 !.env.example
 
 # Database
-db/
 db/*.db
 db/*.db-wal
 db/*.db-shm

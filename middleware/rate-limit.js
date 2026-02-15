@@ -5,30 +5,39 @@ const { logEvent, hashIP, EventTypes } = require('./logger');
  * Allows 3 submissions per IP per 5 minutes
  */
 function submissionRateLimit(db) {
-    return (req, res, next) => {
-        const ip = req.ip || req.connection.remoteAddress;
-        const ipHash = hashIP(ip);
+    return async (req, res, next) => {
+        try {
+            const ip = req.ip || req.connection.remoteAddress;
+            const ipHash = hashIP(ip);
 
-        // Check recent submissions from this IP
-        const result = db.prayerOps.countRecentByIp.get(ipHash);
-        const count = result ? result.count : 0;
+            // Check recent submissions from this IP
+            const result = await db.prayerOps.countRecentByIp.get(ipHash);
+            const count = result ? result.count : 0;
 
-        if (count >= 3) {
-            logEvent(EventTypes.RATE_LIMIT, {
-                ip,
-                type: 'submission',
-                count
-            });
+            if (count >= 3) {
+                logEvent(EventTypes.RATE_LIMIT, {
+                    ip,
+                    type: 'submission',
+                    count
+                });
 
-            return res.status(429).render('error', {
-                title: '請稍後再試',
-                message: '你提交得太頻繁了，請等 5 分鐘後再試。',
+                return res.status(429).render('error', {
+                    title: '請稍後再試',
+                    message: '你提交得太頻繁了，請等 5 分鐘後再試。',
+                    csrfToken: req.csrfToken ? req.csrfToken() : ''
+                });
+            }
+
+            req.ipHash = ipHash;
+            next();
+        } catch (err) {
+            console.error('Rate limit error:', err);
+            return res.status(500).render('error', {
+                title: '伺服器錯誤',
+                message: '發生了一些問題，請稍後再試',
                 csrfToken: req.csrfToken ? req.csrfToken() : ''
             });
         }
-
-        req.ipHash = ipHash;
-        next();
     };
 }
 

@@ -28,7 +28,7 @@ module.exports = function (db) {
     });
 
     // Handle login
-    router.post('/login', loginRateLimit, (req, res) => {
+    router.post('/login', loginRateLimit, async (req, res) => {
         const { username, password } = req.body;
 
         if (!username || !password) {
@@ -39,11 +39,21 @@ module.exports = function (db) {
             });
         }
 
-        const admin = db.adminOps.getByUsername.get(username);
+        let admin;
+        try {
+            admin = await db.adminOps.getByUsername.get(username);
+        } catch (err) {
+            console.error('Admin lookup failed:', err);
+            return res.status(500).render('admin/login', {
+                title: 'Admin 登入',
+                csrfToken: req.csrfToken(),
+                error: '系統暫時無法登入，請稍後再試'
+            });
+        }
 
         if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
             logEvent(EventTypes.ADMIN_LOGIN_FAIL, { username, ip: req.ip });
-            db.auditOps.log.run({
+            await db.auditOps.log.run({
                 eventType: EventTypes.ADMIN_LOGIN_FAIL,
                 prayerId: null,
                 adminUsername: username,
@@ -61,7 +71,7 @@ module.exports = function (db) {
         req.session.admin = { id: admin.id, username: admin.username };
 
         logEvent(EventTypes.ADMIN_LOGIN, { username: admin.username, ip: req.ip });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: EventTypes.ADMIN_LOGIN,
             prayerId: null,
             adminUsername: admin.username,
@@ -84,11 +94,24 @@ module.exports = function (db) {
     });
 
     // Dashboard
-    router.get('/', requireAdmin, (req, res) => {
-        const pendingPrayers = db.prayerOps.getPending.all();
-        const approvedPrayers = db.prayerOps.getApproved.all();
-        const expiredPrayers = db.prayerOps.getExpired.all();
-        const rejectedPrayers = db.prayerOps.getRejected.all();
+    router.get('/', requireAdmin, async (req, res) => {
+        let pendingPrayers;
+        let approvedPrayers;
+        let expiredPrayers;
+        let rejectedPrayers;
+        try {
+            pendingPrayers = await db.prayerOps.getPending.all();
+            approvedPrayers = await db.prayerOps.getApproved.all();
+            expiredPrayers = await db.prayerOps.getExpired.all();
+            rejectedPrayers = await db.prayerOps.getRejected.all();
+        } catch (err) {
+            console.error('Admin dashboard load failed:', err);
+            return res.status(500).render('error', {
+                title: '伺服器錯誤',
+                message: '發生了一些問題，請稍後再試',
+                csrfToken: req.csrfToken ? req.csrfToken() : ''
+            });
+        }
 
         res.render('admin/dashboard', {
             title: 'Admin Dashboard',
@@ -105,18 +128,18 @@ module.exports = function (db) {
     });
 
     // Approve prayer
-    router.post('/approve/:id', requireAdmin, (req, res) => {
+    router.post('/approve/:id', requireAdmin, async (req, res) => {
         const prayerId = parseInt(req.params.id, 10);
         const adminUsername = req.session.admin.username;
 
-        const prayer = db.prayerOps.getById.get(prayerId);
+        const prayer = await db.prayerOps.getById.get(prayerId);
         if (!prayer || prayer.status !== 'PENDING') {
             return res.redirect('/admin');
         }
 
-        db.prayerOps.approve.run({ id: prayerId, adminUsername });
+        await db.prayerOps.approve.run({ id: prayerId, adminUsername });
         logEvent(EventTypes.ADMIN_APPROVE, { prayerId, adminUsername, ip: req.ip });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: EventTypes.ADMIN_APPROVE,
             prayerId,
             adminUsername,
@@ -128,19 +151,19 @@ module.exports = function (db) {
     });
 
     // Reject prayer
-    router.post('/reject/:id', requireAdmin, (req, res) => {
+    router.post('/reject/:id', requireAdmin, async (req, res) => {
         const prayerId = parseInt(req.params.id, 10);
         const adminUsername = req.session.admin.username;
 
-        const prayer = db.prayerOps.getById.get(prayerId);
+        const prayer = await db.prayerOps.getById.get(prayerId);
         // Allow rejecting if status is PENDING or APPROVED
         if (!prayer || (prayer.status !== 'PENDING' && prayer.status !== 'APPROVED')) {
             return res.redirect('/admin');
         }
 
-        db.prayerOps.reject.run({ id: prayerId, adminUsername });
+        await db.prayerOps.reject.run({ id: prayerId, adminUsername });
         logEvent(EventTypes.ADMIN_REJECT, { prayerId, adminUsername, ip: req.ip });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: EventTypes.ADMIN_REJECT,
             prayerId,
             adminUsername,
@@ -152,18 +175,18 @@ module.exports = function (db) {
     });
 
     // Extend expiry by 7 days
-    router.post('/extend/:id', requireAdmin, (req, res) => {
+    router.post('/extend/:id', requireAdmin, async (req, res) => {
         const prayerId = parseInt(req.params.id, 10);
         const adminUsername = req.session.admin.username;
 
-        const prayer = db.prayerOps.getById.get(prayerId);
+        const prayer = await db.prayerOps.getById.get(prayerId);
         if (!prayer || prayer.status !== 'APPROVED') {
             return res.redirect('/admin');
         }
 
-        db.prayerOps.extendExpiry.run({ id: prayerId });
+        await db.prayerOps.extendExpiry.run({ id: prayerId });
         logEvent(EventTypes.ADMIN_EXTEND, { prayerId, adminUsername, ip: req.ip });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: 'admin.extend',
             prayerId,
             adminUsername,
@@ -175,19 +198,19 @@ module.exports = function (db) {
     });
 
     // Set expiry date (approved)
-    router.post('/set-expiry/:id', requireAdmin, (req, res) => {
+    router.post('/set-expiry/:id', requireAdmin, async (req, res) => {
         const prayerId = parseInt(req.params.id, 10);
         const adminUsername = req.session.admin.username;
         const expiresAt = normalizeExpiryDate(req.body.expiresAt);
 
-        const prayer = db.prayerOps.getById.get(prayerId);
+        const prayer = await db.prayerOps.getById.get(prayerId);
         if (!prayer || prayer.status !== 'APPROVED' || !expiresAt) {
             return res.redirect('/admin');
         }
 
-        db.prayerOps.setExpiryDate.run({ id: prayerId, expiresAt });
+        await db.prayerOps.setExpiryDate.run({ id: prayerId, expiresAt });
         logEvent(EventTypes.ADMIN_SET_EXPIRY, { prayerId, adminUsername, ip: req.ip });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: 'admin.set_expiry',
             prayerId,
             adminUsername,
@@ -199,19 +222,19 @@ module.exports = function (db) {
     });
 
     // Recover rejected prayer with expiry date
-    router.post('/recover/:id', requireAdmin, (req, res) => {
+    router.post('/recover/:id', requireAdmin, async (req, res) => {
         const prayerId = parseInt(req.params.id, 10);
         const adminUsername = req.session.admin.username;
         const expiresAt = normalizeExpiryDate(req.body.expiresAt);
 
-        const prayer = db.prayerOps.getById.get(prayerId);
+        const prayer = await db.prayerOps.getById.get(prayerId);
         if (!prayer || prayer.status !== 'REJECTED' || !expiresAt) {
             return res.redirect('/admin');
         }
 
-        db.prayerOps.recoverWithExpiry.run({ id: prayerId, adminUsername, expiresAt });
+        await db.prayerOps.recoverWithExpiry.run({ id: prayerId, adminUsername, expiresAt });
         logEvent(EventTypes.ADMIN_RECOVER, { prayerId, adminUsername, ip: req.ip });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: 'admin.recover',
             prayerId,
             adminUsername,
@@ -223,7 +246,7 @@ module.exports = function (db) {
     });
 
     // Edit prayer (pending/approved)
-    router.post('/edit/:id', requireAdmin, (req, res) => {
+    router.post('/edit/:id', requireAdmin, async (req, res) => {
         const prayerId = parseInt(req.params.id, 10);
         const adminUsername = req.session.admin.username;
         const displayName = req.body.displayName ? req.body.displayName.trim().substring(0, 50) : null;
@@ -233,19 +256,19 @@ module.exports = function (db) {
             return res.redirect('/admin');
         }
 
-        const prayer = db.prayerOps.getById.get(prayerId);
+        const prayer = await db.prayerOps.getById.get(prayerId);
         if (!prayer || (prayer.status !== 'PENDING' && prayer.status !== 'APPROVED')) {
             return res.redirect('/admin');
         }
 
-        db.prayerOps.updateContent.run({
+        await db.prayerOps.updateContent.run({
             id: prayerId,
             displayName: displayName || null,
             content
         });
 
         logEvent(EventTypes.ADMIN_EDIT, { prayerId, adminUsername, ip: req.ip });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: 'admin.edit',
             prayerId,
             adminUsername,
@@ -257,8 +280,8 @@ module.exports = function (db) {
     });
 
     // Digest page - generate text summary for WhatsApp
-    router.get('/digest', requireAdmin, (req, res) => {
-        const approvedPrayers = db.prayerOps.getApproved.all();
+    router.get('/digest', requireAdmin, async (req, res) => {
+        const approvedPrayers = await db.prayerOps.getApproved.all();
         const now = new Date();
         const dateStr = now.toLocaleDateString('zh-HK');
 
@@ -275,7 +298,7 @@ module.exports = function (db) {
         digestText += `\n願主垂聽我們的禱告 🙏`;
 
         logEvent(EventTypes.DIGEST_GENERATE, { adminUsername: req.session.admin.username, count: approvedPrayers.length });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: 'digest.generate',
             prayerId: null,
             adminUsername: req.session.admin.username,
@@ -293,8 +316,8 @@ module.exports = function (db) {
     });
 
     // Settings page - manage admins
-    router.get('/settings', requireAdmin, (req, res) => {
-        const admins = db.adminOps.getAll.all();
+    router.get('/settings', requireAdmin, async (req, res) => {
+        const admins = await db.adminOps.getAll.all();
         res.render('admin/settings', {
             title: '設定',
             csrfToken: req.csrfToken(),
@@ -306,23 +329,23 @@ module.exports = function (db) {
     });
 
     // Add new admin
-    router.post('/add-admin', requireAdmin, (req, res) => {
+    router.post('/add-admin', requireAdmin, async (req, res) => {
         const { username, password } = req.body;
 
         if (!username || !password || password.length < 6) {
             return res.redirect('/admin/settings?error=' + encodeURIComponent('帳號和密碼必填，密碼至少 6 位'));
         }
 
-        const existing = db.adminOps.getByUsername.get(username);
+        const existing = await db.adminOps.getByUsername.get(username);
         if (existing) {
             return res.redirect('/admin/settings?error=' + encodeURIComponent('帳號已存在'));
         }
 
         const passwordHash = bcrypt.hashSync(password, 12);
-        db.adminOps.create.run({ username, passwordHash });
+        await db.adminOps.create.run({ username, passwordHash });
 
         logEvent(EventTypes.ADMIN_CREATE, { createdBy: req.session.admin.username, newAdmin: username });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: 'admin.create',
             prayerId: null,
             adminUsername: req.session.admin.username,
@@ -334,7 +357,7 @@ module.exports = function (db) {
     });
 
     // Remove admin
-    router.post('/remove-admin/:id', requireAdmin, (req, res) => {
+    router.post('/remove-admin/:id', requireAdmin, async (req, res) => {
         const adminId = parseInt(req.params.id, 10);
 
         // Can't remove yourself
@@ -343,16 +366,16 @@ module.exports = function (db) {
         }
 
         // Must have at least 1 admin
-        const count = db.adminOps.count.get();
+        const count = await db.adminOps.count.get();
         if (count.count <= 1) {
             return res.redirect('/admin/settings?error=' + encodeURIComponent('至少要有一個 Admin'));
         }
 
-        const targetAdmin = db.adminOps.getById.get(adminId);
+        const targetAdmin = await db.adminOps.getById.get(adminId);
         if (targetAdmin) {
-            db.adminOps.delete.run(adminId);
+            await db.adminOps.delete.run(adminId);
             logEvent(EventTypes.ADMIN_DELETE, { deletedBy: req.session.admin.username, deletedAdmin: targetAdmin.username });
-            db.auditOps.log.run({
+            await db.auditOps.log.run({
                 eventType: 'admin.delete',
                 prayerId: null,
                 adminUsername: req.session.admin.username,
@@ -365,23 +388,23 @@ module.exports = function (db) {
     });
 
     // Change own password
-    router.post('/change-password', requireAdmin, (req, res) => {
+    router.post('/change-password', requireAdmin, async (req, res) => {
         const { currentPassword, newPassword } = req.body;
 
         if (!newPassword || newPassword.length < 6) {
             return res.redirect('/admin/settings?error=' + encodeURIComponent('新密碼至少 6 位'));
         }
 
-        const admin = db.adminOps.getByUsername.get(req.session.admin.username);
+        const admin = await db.adminOps.getByUsername.get(req.session.admin.username);
         if (!bcrypt.compareSync(currentPassword, admin.password_hash)) {
             return res.redirect('/admin/settings?error=' + encodeURIComponent('現有密碼錯誤'));
         }
 
         const passwordHash = bcrypt.hashSync(newPassword, 12);
-        db.adminOps.updatePassword.run({ passwordHash, id: admin.id });
+        await db.adminOps.updatePassword.run({ passwordHash, id: admin.id });
 
         logEvent(EventTypes.ADMIN_PASSWORD_CHANGE, { adminUsername: req.session.admin.username });
-        db.auditOps.log.run({
+        await db.auditOps.log.run({
             eventType: 'admin.password_change',
             prayerId: null,
             adminUsername: req.session.admin.username,

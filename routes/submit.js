@@ -33,7 +33,7 @@ module.exports = function (db) {
     });
 
     // Handle prayer submission
-    router.post('/submit', submissionRateLimit(db), (req, res) => {
+    router.post('/submit', submissionRateLimit(db), async (req, res) => {
         const { displayName, content, confirmSensitive } = req.body;
 
         // Validate content
@@ -95,7 +95,7 @@ module.exports = function (db) {
                 }
             }
 
-            const result = db.prayerOps.create.run({
+            const result = await db.prayerOps.create.run({
                 displayName: displayName ? displayName.trim().substring(0, 50) : null,
                 content: content.trim(),
                 ipHash: req.ipHash,
@@ -111,7 +111,7 @@ module.exports = function (db) {
             });
 
             // Also log to database audit
-            db.auditOps.log.run({
+            await db.auditOps.log.run({
                 eventType: EventTypes.CREATE_PRAYER,
                 prayerId: result.lastInsertRowid,
                 adminUsername: null,
