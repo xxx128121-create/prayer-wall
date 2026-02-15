@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 
 const express = require('express');
 const session = require('express-session');
@@ -6,116 +6,114 @@ const helmet = require('helmet');
 const csrf = require('csurf');
 const path = require('path');
 
-// Initialize database
-const db = require('./db/init');
-db.initializeAdmin();
+// Initialize database (async - sql.js needs to load WASM)
+const dbReady = require('./db/init');
 
-// Run cleanup on startup and every 24 hours
-db.cleanupOldData();
-setInterval(() => db.cleanupOldData(), 24 * 60 * 60 * 1000);
+dbReady.then((db) => {
+  db.initializeAdmin();
 
-// Initialize Express app
-const app = express();
+  // Run cleanup on startup and every 24 hours
+  db.cleanupOldData();
+  setInterval(() => db.cleanupOldData(), 24 * 60 * 60 * 1000);
 
-// Security middleware
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:"]
-        }
-    }
-}));
+  // Initialize Express app
+  const app = express();
 
-// Body parsing
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
+  // Security middleware
+  app.use(helmet({
+      contentSecurityPolicy: {
+          directives: {
+              defaultSrc: ["'self'"],
+              styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+              scriptSrc: ["'self'", "'unsafe-inline'"],
+              fontSrc: ["'self'", "https://fonts.gstatic.com"],
+              imgSrc: ["'self'", "data:"]
+          }
+      }
+  }));
 
-// Static files
-app.use(express.static(path.join(__dirname, 'public')));
+  // Body parsing
+  app.use(express.urlencoded({ extended: false }));
+  app.use(express.json());
 
-// Session configuration
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'prayer-wall-secret-change-this',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-}));
+  // Static files
+  app.use(express.static(path.join(__dirname, 'public')));
 
-// CSRF protection
-app.use(csrf());
+  // Session configuration
+  app.use(session({
+      secret: process.env.SESSION_SECRET || 'prayer-wall-secret-change-this',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+          secure: process.env.NODE_ENV === 'production',
+          httpOnly: true,
+          maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      }
+  }));
 
-// View engine
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+  // CSRF protection
+  app.use(csrf());
 
-// Add common variables to all views
-const { addAdminToLocals } = require('./middleware/auth');
-app.use(addAdminToLocals);
+  // View engine
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(__dirname, 'views'));
 
-// Routes
-app.use('/', require('./routes/public')(db));
-app.use('/', require('./routes/submit')(db));
-app.use('/admin', require('./routes/admin')(db));
+  // Add common variables to all views
+  const { addAdminToLocals } = require('./middleware/auth');
+  app.use(addAdminToLocals);
 
-// Error view
-app.get('/error', (req, res) => {
-    res.render('error', {
-        title: '錯誤',
-        message: '發生了一些問題',
-        csrfToken: req.csrfToken()
-    });
+  // Routes
+  app.use('/', require('./routes/public')(db));
+  app.use('/', require('./routes/submit')(db));
+  app.use('/admin', require('./routes/admin')(db));
+
+  // Error view
+  app.get('/error', (req, res) => {
+      res.render('error', {
+          title: 'éŒ¯èª¤',
+          message: 'ç™¼ç”Ÿäº†ä¸€äº›å•é¡Œ',
+          csrfToken: req.csrfToken()
+      });
+  });
+
+  // 404 handler
+  app.use((req, res) => {
+      res.status(404).render('error', {
+          title: 'æ‰¾ä¸åˆ°é é¢',
+          message: 'ä½ è¦æ‰¾çš„é é¢ä¸å­˜åœ¨',
+          csrfToken: req.csrfToken()
+      });
+  });
+
+  // Error handler
+  app.use((err, req, res, next) => {
+      console.error('Error:', err);
+
+      // CSRF token errors
+      if (err.code === 'EBADCSRFTOKEN') {
+          return res.status(403).render('error', {
+              title: 'å®‰å…¨éŒ¯èª¤',
+              message: 'è¡¨å–®å·²éŽæœŸï¼Œè«‹é‡æ–°æ•´ç†é é¢å†è©¦',
+              csrfToken: ''
+          });
+      }
+
+      res.status(500).render('error', {
+          title: 'ä¼ºæœå™¨éŒ¯èª¤',
+          message: 'ç™¼ç”Ÿäº†ä¸€äº›å•é¡Œï¼Œè«‹ç¨å¾Œå†è©¦',
+          csrfToken: req.csrfToken ? req.csrfToken() : ''
+      });
+  });
+
+  // Start server
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+      console.log(`\nPrayer Wall server running\n- http://localhost:${PORT}\n- Admin: http://localhost:${PORT}/admin/login\n`);
+  });
+}).catch((err) => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
 });
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).render('error', {
-        title: '找不到頁面',
-        message: '你要找的頁面不存在',
-        csrfToken: req.csrfToken()
-    });
-});
 
-// Error handler
-app.use((err, req, res, next) => {
-    console.error('Error:', err);
 
-    // CSRF token errors
-    if (err.code === 'EBADCSRFTOKEN') {
-        return res.status(403).render('error', {
-            title: '安全錯誤',
-            message: '表單已過期，請重新整理頁面再試',
-            csrfToken: ''
-        });
-    }
-
-    res.status(500).render('error', {
-        title: '伺服器錯誤',
-        message: '發生了一些問題，請稍後再試',
-        csrfToken: req.csrfToken ? req.csrfToken() : ''
-    });
-});
-
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`
-╔════════════════════════════════════════╗
-║       🙏 教會祈禱牆 Prayer Wall 🙏       ║
-╠════════════════════════════════════════╣
-║  Server running at:                    ║
-║  http://localhost:${PORT.toString().padEnd(24)}║
-║                                        ║
-║  Admin login:                          ║
-║  http://localhost:${PORT}/admin/login${' '.repeat(10 - PORT.toString().length)}║
-╚════════════════════════════════════════╝
-  `);
-});
-
-module.exports = app;

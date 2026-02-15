@@ -1,342 +1,263 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
+﻿<%- include('../partials/head', { title: '管理後台', description: '管理後台 - 教會祈禱牆' }) %>
+<%- include('../partials/header', { heroSubtitle: '管理後台' }) %>
+<%- include('../partials/admin-nav', { activeAdmin: 'dashboard' }) %>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - 教會祈禱牆</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <style>
-        .tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
+<main class="main">
+  <!-- Admin bar -->
+  <div class="admin-bar">
+    <div class="admin-user">登入為 <strong><%= admin.username %></strong></div>
+    <form method="POST" action="/admin/logout" class="inline-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit" class="btn btn-outline btn-sm">登出</button>
+    </form>
+  </div>
 
-        .tab {
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            background: #e0e0e0;
-            color: #333;
-            text-decoration: none;
-            font-size: 0.9rem;
-            cursor: pointer;
-            border: none;
-        }
+  <!-- Stats -->
+  <div class="stats fade-up">
+    <div class="stat-card">
+      <div class="stat-number"><%= pendingCount %></div>
+      <div class="stat-label">待審批</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= approvedCount %></div>
+      <div class="stat-label">已批准</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= expiredCount %></div>
+      <div class="stat-label">已過期</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number"><%= rejectedCount %></div>
+      <div class="stat-label">已拒絕</div>
+    </div>
+  </div>
 
-        .tab.active {
-            background: var(--color-primary);
-            color: white;
-        }
+  <!-- Tabs -->
+  <div class="tabs">
+    <button type="button" class="tab active" data-tab="pending">待審批 (<%= pendingCount %>)</button>
+    <button type="button" class="tab" data-tab="approved">已批准 (<%= approvedCount %>)</button>
+    <button type="button" class="tab" data-tab="expired">已過期 (<%= expiredCount %>)</button>
+    <button type="button" class="tab" data-tab="rejected">已拒絕 (<%= rejectedCount %>)</button>
+  </div>
 
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .expiry-badge {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-left: 0.5rem;
-        }
-
-        .expiry-soon {
-            background: #fff3e0;
-            color: #e65100;
-        }
-
-        .expiry-ok {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-    </style>
-</head>
-
-<body>
-    <header class="header">
-        <h1>🙏 教會祈禱牆</h1>
-        <p>管理後台</p>
-    </header>
-
-    <nav class="nav">
-        <a href="/">📖 祈禱牆</a>
-        <a href="/submit">✍️ 提交代禱</a>
-        <a href="/admin" class="active">⚙️ 管理後台</a>
-        <a href="/admin/digest">📋 生成摘要</a>
-        <a href="/admin/settings">👥 設定</a>
-    </nav>
-
-    <main class="main">
-        <div class="admin-header">
-            <h2>⚙️ 管理後台</h2>
-            <div class="admin-actions">
-                <span style="color: var(--text-secondary); margin-right: 0.5rem;">👤 <%= admin.username %></span>
-                <form method="POST" action="/admin/logout" style="display: inline;">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <button type="submit" class="btn btn-outline btn-sm">登出</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="stats fade-in">
-            <div class="stat-card">
-                <div class="stat-number">
-                    <%= pendingCount %>
-                </div>
-                <div class="stat-label">待審批</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">
-                    <%= approvedCount %>
-                </div>
-                <div class="stat-label">已批准</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">
-                    <%= expiredCount %>
-                </div>
-                <div class="stat-label">已過期</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">
-                    <%= rejectedCount %>
-                </div>
-                <div class="stat-label">已拒絕</div>
-            </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="tabs">
-            <button type="button" class="tab active" data-tab="pending">📋 待審批 (<%= pendingCount %>)</button>
-            <button type="button" class="tab" data-tab="approved">✅ 已批准 (<%= approvedCount %>)</button>
-            <button type="button" class="tab" data-tab="expired">⏰ 已過期 (<%= expiredCount %>)</button>
-            <button type="button" class="tab" data-tab="rejected">❌ 已拒絕 (<%= rejectedCount %>)</button>
-        </div>
-
-        <!-- Pending Tab -->
-        <section id="pending" class="tab-content active fade-in">
-            <% if (pendingPrayers.length===0) { %>
-                <div class="empty-state">
-                    <div class="empty-state-icon">✅</div>
-                    <p class="empty-state-text">暫無待審批項目</p>
-                </div>
+  <!-- Pending -->
+  <section id="pending" class="tab-content active">
+    <% if (pendingPrayers.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon">&#10003;</div>
+        <p class="empty-text">暫無待審批項目</p>
+      </div>
+    <% } else { %>
+      <div class="prayer-list">
+        <% pendingPrayers.forEach(function(prayer) { %>
+          <article class="card">
+            <div class="card-header">
+              <span class="card-name">
+                <% if (prayer.display_name) { %>
+                  <%= prayer.display_name %>
                 <% } else { %>
-                    <% pendingPrayers.forEach(function(prayer) { %>
-                        <article class="card">
-                            <div class="card-header">
-                                <span class="card-title">
-                                    <% if (prayer.display_name) { %>
-                                        <%= prayer.display_name %>
-                                            <% } else { %>
-                                                <span class="prayer-anonymous">匿名</span>
-                                                <% } %>
-                                </span>
-                                <span class="card-meta">
-                                    <%= new Date(prayer.created_at).toLocaleString('zh-HK') %>
-                                </span>
-                            </div>
-
-                            <div
-                                style="font-size: 0.85rem; color: var(--color-primary); margin-bottom: 0.5rem; background: #e3f2fd; padding: 4px 8px; border-radius: 4px; display: inline-block;">
-                                ⏱️ 申請顯示時間: <%= prayer.duration_days || 7 %> 日
-                            </div>
-
-                            <div class="card-content">
-                                <%= prayer.content %>
-                            </div>
-                            <div class="btn-group">
-                                <form method="POST" action="/admin/approve/<%= prayer.id %>" style="flex: 1;">
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                    <button type="submit" class="btn btn-success btn-block btn-sm">✅ 批准</button>
-                                </form>
-                                <form method="POST" action="/admin/reject/<%= prayer.id %>" style="flex: 1;">
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                    <button type="submit" class="btn btn-danger btn-block btn-sm">❌ 拒絕</button>
-                                </form>
-                            </div>
-                        </article>
-                        <% }); %>
-                            <% } %>
-        </section>
-
-        <!-- Approved Tab -->
-        <section id="approved" class="tab-content fade-in">
-            <% if (approvedPrayers.length===0) { %>
-                <div class="empty-state">
-                    <div class="empty-state-icon">📭</div>
-                    <p class="empty-state-text">暫無已批准代禱</p>
-                </div>
-                <% } else { %>
-                    <% approvedPrayers.forEach(function(prayer) { const expiresAt=prayer.expires_at ? new
-                        Date(prayer.expires_at) : null; const approvedAt=new Date(prayer.approved_at); const now=new
-                        Date(); const daysLeft=expiresAt ? Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24)) : null;
-                        const dateRange=expiresAt ? `${approvedAt.toLocaleDateString('zh-HK')} -
-                        ${expiresAt.toLocaleDateString('zh-HK')}` : '' ; %>
-                        <article class="card prayer-card">
-                            <div class="card-header">
-                                <span class="card-title">
-                                    <% if (prayer.display_name) { %>
-                                        <%= prayer.display_name %>
-                                            <% } else { %>
-                                                <span class="prayer-anonymous">匿名</span>
-                                                <% } %>
-
-                                                    <% if (daysLeft !==null) { %>
-                                                        <span
-                                                            class="expiry-badge <%= daysLeft <= 2 ? 'expiry-soon' : 'expiry-ok' %>">
-                                                            <%= daysLeft %> 日後過期
-                                                        </span>
-                                                        <% } %>
-                                </span>
-                                <span class="card-meta">
-                                    批准於 <%= approvedAt.toLocaleDateString('zh-HK') %>
-                                </span>
-                            </div>
-
-                            <% if (dateRange) { %>
-                                <div
-                                    style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem; background: #f9f9f9; padding: 4px 8px; border-radius: 4px; display: inline-block;">
-                                    📅 顯示時間: <%= dateRange %>
-                                </div>
-                                <% } %>
-
-                                    <div class="card-content">
-                                        <%= prayer.content %>
-                                    </div>
-                                    <div class="btn-group">
-                                        <form method="POST" action="/admin/extend/<%= prayer.id %>" style="flex: 2;">
-                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                            <button type="submit" class="btn btn-outline btn-sm btn-block">⏰ 延長 7
-                                                日</button>
-                                        </form>
-                                        <form method="POST" action="/admin/reject/<%= prayer.id %>" style="flex: 1;"
-                                            onsubmit="return confirm('確定要刪除 (拒絕) 此代禱？');">
-                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                            <button type="submit" class="btn btn-danger btn-sm btn-block">🗑️
-                                                刪除</button>
-                                        </form>
-                                    </div>
-                        </article>
-                        <% }); %>
-                            <% } %>
-        </section>
-
-        <!-- Expired Tab -->
-        <section id="expired" class="tab-content fade-in">
-            <div class="alert alert-info" style="margin-bottom: 1rem;">
-                已過期的代禱唔會再顯示喺公開祈禱牆。你可以延長佢哋。
+                  <span class="card-name-anon">匿名</span>
+                <% } %>
+              </span>
+              <span class="card-meta"><%= new Date(prayer.created_at).toLocaleString('zh-HK') %></span>
             </div>
-            <% if (expiredPrayers.length===0) { %>
-                <div class="empty-state">
-                    <div class="empty-state-icon">⏰</div>
-                    <p class="empty-state-text">暫無已過期代禱</p>
+            <div class="duration-info">申請顯示 <%= prayer.duration_days || 7 %> 日</div>
+            <div class="card-content"><%= prayer.content %></div>
+            <details class="edit-panel">
+              <summary class="edit-toggle">編輯</summary>
+              <form method="POST" action="/admin/edit/<%= prayer.id %>" class="edit-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div class="form-group">
+                  <label class="form-label" for="pendingName-<%= prayer.id %>">署名（可選）</label>
+                  <input type="text" id="pendingName-<%= prayer.id %>" name="displayName" class="form-input"
+                    maxlength="50" value="<%= prayer.display_name || '' %>">
                 </div>
-                <% } else { %>
-                    <% expiredPrayers.forEach(function(prayer) { %>
-                        <article class="card" style="opacity: 0.7;">
-                            <div class="card-header">
-                                <span class="card-title">
-                                    <% if (prayer.display_name) { %>
-                                        <%= prayer.display_name %>
-                                            <% } else { %><span class="prayer-anonymous">匿名</span>
-                                                <% } %>
-                                </span>
-                                <span class="card-meta">過期於 <%= new Date(prayer.expires_at).toLocaleDateString('zh-HK')
-                                        %></span>
-                            </div>
-                            <div class="card-content">
-                                <%= prayer.content %>
-                            </div>
-                            <div class="btn-group">
-                                <form method="POST" action="/admin/extend/<%= prayer.id %>">
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                    <button type="submit" class="btn btn-primary btn-sm">🔄 重新上架 (+7 日)</button>
-                                </form>
-                            </div>
-                        </article>
-                        <% }); %>
-                            <% } %>
-        </section>
-
-        <!-- Rejected Tab -->
-        <section id="rejected" class="tab-content fade-in">
-            <div class="alert alert-info" style="margin-bottom: 1rem;">
-                已拒絕的代禱會保留 60 日作記錄，之後自動刪除。
+                <div class="form-group">
+                  <label class="form-label" for="pendingContent-<%= prayer.id %>">代禱內容 *</label>
+                  <textarea id="pendingContent-<%= prayer.id %>" name="content" class="form-textarea"
+                    required maxlength="1000"><%= prayer.content %></textarea>
+                </div>
+                <button type="submit" class="btn btn-outline btn-sm">儲存</button>
+              </form>
+            </details>
+            <div class="btn-group">
+              <form method="POST" action="/admin/approve/<%= prayer.id %>" style="flex:1;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-success btn-block btn-sm">批准</button>
+              </form>
+              <form method="POST" action="/admin/reject/<%= prayer.id %>" style="flex:1;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-danger btn-block btn-sm">拒絕</button>
+              </form>
             </div>
-            <% if (rejectedPrayers.length===0) { %>
-                <div class="empty-state">
-                    <div class="empty-state-icon">🗑️</div>
-                    <p class="empty-state-text">暫無已拒絕代禱</p>
-                </div>
+          </article>
+        <% }); %>
+      </div>
+    <% } %>
+  </section>
+
+  <!-- Approved -->
+  <section id="approved" class="tab-content">
+    <% if (approvedPrayers.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon">&#x271D;</div>
+        <p class="empty-text">暫無已批准代禱</p>
+      </div>
+    <% } else { %>
+      <div class="prayer-list">
+        <% approvedPrayers.forEach(function(prayer) {
+          const expiresAt = prayer.expires_at ? new Date(prayer.expires_at) : null;
+          const approvedAt = new Date(prayer.approved_at);
+          const now = new Date();
+          const daysLeft = expiresAt ? Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24)) : null;
+          const todayStr = new Date().toISOString().split('T')[0];
+          const expiresStr = expiresAt ? expiresAt.toISOString().split('T')[0] : todayStr;
+        %>
+          <article class="card">
+            <div class="card-header">
+              <span class="card-name">
+                <% if (prayer.display_name) { %>
+                  <%= prayer.display_name %>
                 <% } else { %>
-                    <% rejectedPrayers.forEach(function(prayer) { %>
-                        <article class="card" style="opacity: 0.6; border-left: 4px solid var(--color-error);">
-                            <div class="card-header">
-                                <span class="card-title">
-                                    <% if (prayer.display_name) { %>
-                                        <%= prayer.display_name %>
-                                            <% } else { %><span class="prayer-anonymous">匿名</span>
-                                                <% } %>
-                                </span>
-                                <span class="card-meta">
-                                    拒絕於 <%= new Date(prayer.approved_at).toLocaleDateString('zh-HK') %>
-                                        by <%= prayer.approved_by %>
-                                </span>
-                            </div>
-                            <div class="card-content">
-                                <%= prayer.content %>
-                            </div>
-                        </article>
-                        <% }); %>
-                            <% } %>
-        </section>
-    </main>
+                  <span class="card-name-anon">匿名</span>
+                <% } %>
+                <% if (daysLeft !== null) { %>
+                  <span class="badge <%= daysLeft <= 2 ? 'badge-warning' : 'badge-ok' %>">
+                    <%= daysLeft %> 日後過期
+                  </span>
+                <% } %>
+              </span>
+              <span class="card-meta">批准於 <%= approvedAt.toLocaleDateString('zh-HK') %></span>
+            </div>
+            <% if (expiresAt) { %>
+              <div class="date-range">
+                <%= approvedAt.toLocaleDateString('zh-HK') %> &mdash; <%= expiresAt.toLocaleDateString('zh-HK') %>
+              </div>
+            <% } %>
+            <div class="card-content"><%= prayer.content %></div>
+            <details class="edit-panel">
+              <summary class="edit-toggle">編輯</summary>
+              <form method="POST" action="/admin/edit/<%= prayer.id %>" class="edit-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div class="form-group">
+                  <label class="form-label" for="approvedName-<%= prayer.id %>">署名（可選）</label>
+                  <input type="text" id="approvedName-<%= prayer.id %>" name="displayName" class="form-input"
+                    maxlength="50" value="<%= prayer.display_name || '' %>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="approvedContent-<%= prayer.id %>">代禱內容 *</label>
+                  <textarea id="approvedContent-<%= prayer.id %>" name="content" class="form-textarea"
+                    required maxlength="1000"><%= prayer.content %></textarea>
+                </div>
+                <button type="submit" class="btn btn-outline btn-sm">儲存</button>
+              </form>
+            </details>
+            <div class="btn-group">
+              <form method="POST" action="/admin/set-expiry/<%= prayer.id %>" class="inline-date-form" style="flex:2;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="date" name="expiresAt" class="form-input form-input-compact" min="<%= todayStr %>" value="<%= expiresStr %>" required>
+                <button type="submit" class="btn btn-outline btn-sm">更新日期</button>
+              </form>
+              <form method="POST" action="/admin/reject/<%= prayer.id %>" style="flex:1;"
+                onsubmit="return confirm('確定要刪除此代禱？');">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-danger btn-sm btn-block">刪除</button>
+              </form>
+            </div>
+          </article>
+        <% }); %>
+      </div>
+    <% } %>
+  </section>
 
-    <footer class="footer">
-        <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %>
-        </p>
-    </footer>
+  <!-- Expired -->
+  <section id="expired" class="tab-content">
+    <div class="alert alert-info mb-md">已過期的代禱不會再顯示在公開祈禱牆。你可以延長它們。</div>
+    <% if (expiredPrayers.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon">&#8986;</div>
+        <p class="empty-text">暫無已過期代禱</p>
+      </div>
+    <% } else { %>
+      <div class="prayer-list">
+        <% expiredPrayers.forEach(function(prayer) { %>
+          <article class="card card-expired">
+            <div class="card-header">
+              <span class="card-name">
+                <% if (prayer.display_name) { %><%= prayer.display_name %><% } else { %><span class="card-name-anon">匿名</span><% } %>
+              </span>
+              <span class="card-meta">過期於 <%= new Date(prayer.expires_at).toLocaleDateString('zh-HK') %></span>
+            </div>
+            <div class="card-content"><%= prayer.content %></div>
+            <div class="btn-group">
+              <form method="POST" action="/admin/extend/<%= prayer.id %>">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="btn btn-gold btn-sm">重新上架 (+7 日)</button>
+              </form>
+            </div>
+          </article>
+        <% }); %>
+      </div>
+    <% } %>
+  </section>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const tabs = document.querySelectorAll('.tab');
-            const contents = document.querySelectorAll('.tab-content');
+  <!-- Rejected -->
+  <section id="rejected" class="tab-content">
+    <div class="alert alert-info mb-md">已拒絕的代禱會保留 60 日作記錄，之後自動刪除。</div>
+    <% if (rejectedPrayers.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon">&#128465;</div>
+        <p class="empty-text">暫無已拒絕代禱</p>
+      </div>
+    <% } else { %>
+      <div class="prayer-list">
+        <% rejectedPrayers.forEach(function(prayer) {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const recoverStr = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        %>
+          <article class="card card-rejected">
+            <div class="card-header">
+              <span class="card-name">
+                <% if (prayer.display_name) { %><%= prayer.display_name %><% } else { %><span class="card-name-anon">匿名</span><% } %>
+              </span>
+              <span class="card-meta">
+                拒絕於 <%= new Date(prayer.approved_at).toLocaleDateString('zh-HK') %> by <%= prayer.approved_by %>
+              </span>
+            </div>
+            <div class="card-content"><%= prayer.content %></div>
+            <div class="btn-group">
+              <form method="POST" action="/admin/recover/<%= prayer.id %>" class="inline-date-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="date" name="expiresAt" class="form-input form-input-compact" min="<%= todayStr %>" value="<%= recoverStr %>" required>
+                <button type="submit" class="btn btn-outline btn-sm">恢復</button>
+              </form>
+            </div>
+          </article>
+        <% }); %>
+      </div>
+    <% } %>
+  </section>
+</main>
 
-            function switchTab(tabId) {
-                // Update tabs
-                tabs.forEach(function (t) {
-                    if (t.dataset.tab === tabId) t.classList.add('active');
-                    else t.classList.remove('active');
-                });
+<%- include('../partials/footer') %>
 
-                // Update contents
-                contents.forEach(function (c) {
-                    if (c.id === tabId) c.classList.add('active');
-                    else c.classList.remove('active');
-                });
-            }
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var tabs = document.querySelectorAll('.tab');
+    var contents = document.querySelectorAll('.tab-content');
 
-            tabs.forEach(function (tab) {
-                tab.addEventListener('click', function () {
-                    const tabId = this.dataset.tab;
-                    switchTab(tabId);
-                });
-            });
+    function switchTab(id) {
+      tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.tab === id); });
+      contents.forEach(function(c) { c.classList.toggle('active', c.id === id); });
+    }
 
-            // Handle hash navigation
-            if (window.location.hash) {
-                const tabId = window.location.hash.substring(1);
-                if (document.getElementById(tabId)) {
-                    switchTab(tabId);
-                }
-            }
-        });
-    </script>
-</body>
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() { switchTab(this.dataset.tab); });
+    });
 
-</html>
+    if (window.location.hash) {
+      var id = window.location.hash.substring(1);
+      if (document.getElementById(id)) switchTab(id);
+    }
+  });
+</script>

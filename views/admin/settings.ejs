@@ -1,135 +1,90 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
+﻿<%- include('../partials/head', { title: '設定', description: '設定 - 教會祈禱牆' }) %>
+<%- include('../partials/header', { heroSubtitle: '設定' }) %>
+<%- include('../partials/admin-nav', { activeAdmin: 'settings' }) %>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>設定 - 教會祈禱牆</title>
-    <link rel="stylesheet" href="/css/style.css">
-</head>
+<main class="main">
+  <% if (success) { %>
+    <div class="alert alert-success fade-up"><%= success %></div>
+  <% } %>
+  <% if (error) { %>
+    <div class="alert alert-error fade-up"><%= error %></div>
+  <% } %>
 
-<body>
-    <header class="header">
-        <h1>🙏 教會祈禱牆</h1>
-        <p>設定</p>
-    </header>
+  <!-- Admin List -->
+  <div class="section-card fade-up">
+    <h2 class="section-title">管理員帳號</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>帳號</th>
+          <th>建立日期</th>
+          <th style="text-align:right;">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% admins.forEach(function(a) { %>
+          <tr>
+            <td>
+              <%= a.username %>
+              <% if (a.id === currentAdminId) { %>
+                <span class="text-muted" style="font-size:0.8rem;">（你）</span>
+              <% } %>
+            </td>
+            <td class="text-muted"><%= new Date(a.created_at).toLocaleDateString('zh-HK') %></td>
+            <td style="text-align:right;">
+              <% if (a.id !== currentAdminId) { %>
+                <form method="POST" action="/admin/remove-admin/<%= a.id %>" class="inline-form"
+                  onsubmit="return confirm('確定要移除此管理員？');">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button type="submit" class="btn btn-danger btn-sm">移除</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
 
-    <nav class="nav">
-        <a href="/">📖 祈禱牆</a>
-        <a href="/submit">✍️ 提交代禱</a>
-        <a href="/admin">⚙️ 管理後台</a>
-        <a href="/admin/digest">📋 生成摘要</a>
-        <a href="/admin/settings" class="active">👥 設定</a>
-    </nav>
+  <!-- Add Admin -->
+  <div class="section-card fade-up">
+    <h2 class="section-title">新增管理員</h2>
+    <form method="POST" action="/admin/add-admin">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-group">
+        <label class="form-label" for="username">帳號</label>
+        <input type="text" id="username" name="username" class="form-input" required maxlength="50">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">密碼</label>
+        <input type="password" id="password" name="password" class="form-input" required minlength="6">
+        <p class="form-hint">至少 6 位</p>
+      </div>
+      <button type="submit" class="btn btn-primary">新增</button>
+    </form>
+  </div>
 
-    <main class="main">
-        <% if (success) { %>
-            <div class="alert alert-success fade-in">✅ <%= success %>
-            </div>
-            <% } %>
-                <% if (error) { %>
-                    <div class="alert alert-error fade-in">❌ <%= error %>
-                    </div>
-                    <% } %>
+  <!-- Change Password -->
+  <div class="section-card fade-up">
+    <h2 class="section-title">更改密碼</h2>
+    <form method="POST" action="/admin/change-password">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-group">
+        <label class="form-label" for="currentPassword">現有密碼</label>
+        <input type="password" id="currentPassword" name="currentPassword" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="newPassword">新密碼</label>
+        <input type="password" id="newPassword" name="newPassword" class="form-input" required minlength="6">
+        <p class="form-hint">至少 6 位</p>
+      </div>
+      <button type="submit" class="btn btn-primary">更改密碼</button>
+    </form>
+  </div>
 
-                        <!-- Admin List -->
-                        <div class="card fade-in">
-                            <h2 class="section-title">👥 Admin 帳號</h2>
+  <div class="mt-md">
+    <a href="/admin" class="btn btn-outline">&#8592; 返回後台</a>
+  </div>
+</main>
 
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <thead>
-                                    <tr style="background: #f5f5f5;">
-                                        <th style="padding: 0.75rem; text-align: left;">帳號</th>
-                                        <th style="padding: 0.75rem; text-align: left;">建立日期</th>
-                                        <th style="padding: 0.75rem; text-align: right;">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% admins.forEach(function(a) { %>
-                                        <tr style="border-bottom: 1px solid #eee;">
-                                            <td style="padding: 0.75rem;">
-                                                <%= a.username %>
-                                                    <% if (a.id===currentAdminId) { %>
-                                                        <span
-                                                            style="color: var(--color-primary); font-size: 0.8rem;">（你）</span>
-                                                        <% } %>
-                                            </td>
-                                            <td style="padding: 0.75rem; color: var(--text-secondary);">
-                                                <%= new Date(a.created_at).toLocaleDateString('zh-HK') %>
-                                            </td>
-                                            <td style="padding: 0.75rem; text-align: right;">
-                                                <% if (a.id !==currentAdminId) { %>
-                                                    <form method="POST" action="/admin/remove-admin/<%= a.id %>"
-                                                        style="display: inline;"
-                                                        onsubmit="return confirm('確定要移除此 Admin？');">
-                                                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                                        <button type="submit" class="btn btn-danger btn-sm">移除</button>
-                                                    </form>
-                                                    <% } %>
-                                            </td>
-                                        </tr>
-                                        <% }); %>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Add Admin -->
-                        <div class="card fade-in">
-                            <h2 class="section-title">➕ 新增 Admin</h2>
-
-                            <form method="POST" action="/admin/add-admin">
-                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-                                <div class="form-group">
-                                    <label class="form-label" for="username">帳號</label>
-                                    <input type="text" id="username" name="username" class="form-input" required
-                                        maxlength="50">
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label" for="password">密碼</label>
-                                    <input type="password" id="password" name="password" class="form-input" required
-                                        minlength="6">
-                                    <p class="form-hint">至少 6 位</p>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary">新增 Admin</button>
-                            </form>
-                        </div>
-
-                        <!-- Change Password -->
-                        <div class="card fade-in">
-                            <h2 class="section-title">🔑 更改密碼</h2>
-
-                            <form method="POST" action="/admin/change-password">
-                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-                                <div class="form-group">
-                                    <label class="form-label" for="currentPassword">現有密碼</label>
-                                    <input type="password" id="currentPassword" name="currentPassword"
-                                        class="form-input" required>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label" for="newPassword">新密碼</label>
-                                    <input type="password" id="newPassword" name="newPassword" class="form-input"
-                                        required minlength="6">
-                                    <p class="form-hint">至少 6 位</p>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary">更改密碼</button>
-                            </form>
-                        </div>
-
-                        <div style="margin-top: 1rem;">
-                            <a href="/admin" class="btn btn-outline">← 返回後台</a>
-                        </div>
-    </main>
-
-    <footer class="footer">
-        <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %>
-        </p>
-    </footer>
-</body>
-
-</html>
+<%- include('../partials/footer') %>

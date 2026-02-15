@@ -1,0 +1,470 @@
+/* ============================================
+   Prayer Wall - Display/Projection Mode
+   Paginated Lennon Wall Style
+   ============================================ */
+
+/* Full screen body */
+.display-body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 30%, #1c2128 60%, #0d1117 100%);
+  cursor: none;
+  user-select: none;
+}
+
+.display-body:hover {
+  cursor: default;
+}
+
+/* Background effects */
+.display-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.display-bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  animation: orbPulse 8s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 50vw;
+  height: 50vw;
+  top: -20%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(150, 119, 42, 0.4), transparent 70%);
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 40vw;
+  height: 40vw;
+  bottom: -15%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(61, 90, 128, 0.4), transparent 70%);
+  animation-delay: -3s;
+}
+
+.orb-3 {
+  width: 35vw;
+  height: 35vw;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(191, 161, 78, 0.2), transparent 70%);
+  animation-delay: -5s;
+}
+
+@keyframes orbPulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+/* Controls */
+.display-controls {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.display-body:hover .display-controls {
+  opacity: 1;
+}
+
+.display-control-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.display-control-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(150, 119, 42, 0.5);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+/* Page indicator */
+.page-indicator {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.display-body:hover .page-indicator {
+  opacity: 1;
+}
+
+/* Display title */
+.display-title {
+  position: fixed;
+  top: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  text-align: center;
+}
+
+.display-title h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.2em;
+  margin: 0;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #f5f0e8, #d4c4a8, #f5f0e8);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ============================================
+   Lennon Wall Carousel
+   ============================================ */
+
+.wall-carousel {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.wall-page {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateX(100px);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.wall-page.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.wall-page.prev {
+  transform: translateX(-100px);
+}
+
+.wall-notes-container {
+  position: absolute;
+  inset: 0;
+  padding-top: 80px;
+}
+
+/* Empty state */
+.wall-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.1em;
+}
+
+/* Wall notes */
+.wall-note {
+  position: absolute;
+  width: 260px;
+  max-width: 280px;
+  padding: 1.4rem 1.5rem;
+  background: linear-gradient(
+    135deg,
+    hsla(var(--hue), 30%, 88%, 0.95) 0%,
+    hsla(var(--hue), 25%, 83%, 0.92) 100%
+  );
+  border-radius: 3px;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transform-origin: center center;
+  animation: noteAppear 0.5s ease-out both;
+  animation-delay: var(--delay);
+  cursor: default;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0s;
+}
+
+/* Size variations */
+.wall-note.note-large {
+  width: 220px;
+  padding: 1.8rem;
+}
+
+.wall-note.note-medium {
+  width: 250px;
+}
+
+.wall-note.note-small {
+  width: 280px;
+  max-width: 300px;
+}
+
+.wall-note:hover {
+  transform: translate(-50%, -50%) rotate(0deg) scale(1.08) !important;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.25),
+    0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100 !important;
+}
+
+@keyframes noteAppear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.wall-note-content {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: #2a2725;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 140px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+}
+
+/* Large text for short prayers */
+.wall-note.note-large .wall-note-content {
+  font-size: 1.3rem;
+  line-height: 1.5;
+  font-weight: 500;
+  -webkit-line-clamp: 3;
+  text-align: center;
+  max-height: 120px;
+}
+
+/* Medium text */
+.wall-note.note-medium .wall-note-content {
+  font-size: 1.1rem;
+  line-height: 1.65;
+  -webkit-line-clamp: 4;
+}
+
+/* Small text for long prayers */
+.wall-note.note-small .wall-note-content {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  -webkit-line-clamp: 6;
+  max-height: 160px;
+}
+
+.wall-note-name {
+  margin-top: 0.8rem;
+  font-size: 0.8rem;
+  color: #555;
+  text-align: right;
+  font-style: italic;
+}
+
+.wall-note.note-large .wall-note-name {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+/* Different note colors */
+.wall-note:nth-child(6n+1) { --hue: 45; }  /* Gold/Yellow */
+.wall-note:nth-child(6n+2) { --hue: 200; } /* Blue */
+.wall-note:nth-child(6n+3) { --hue: 340; } /* Pink */
+.wall-note:nth-child(6n+4) { --hue: 120; } /* Green */
+.wall-note:nth-child(6n+5) { --hue: 30; }  /* Orange */
+.wall-note:nth-child(6n+6) { --hue: 280; } /* Purple */
+
+/* Page dots */
+.page-dots {
+  position: fixed;
+  bottom: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  z-index: 20;
+}
+
+.page-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.page-dot:hover {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.2);
+}
+
+.page-dot.active {
+  background: rgba(191, 161, 78, 0.9);
+  box-shadow: 0 0 15px rgba(191, 161, 78, 0.6);
+  transform: scale(1.1);
+}
+
+/* Progress bar */
+.carousel-progress {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 20;
+}
+
+.carousel-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(150, 119, 42, 0.6), rgba(191, 161, 78, 0.9));
+  box-shadow: 0 0 15px rgba(191, 161, 78, 0.5);
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 1200px) {
+  .wall-note {
+    width: 220px !important;
+    max-width: 240px !important;
+    padding: 1.2rem;
+  }
+
+  .wall-note-content {
+    font-size: 0.9rem !important;
+  }
+
+  .wall-note.note-large .wall-note-content {
+    font-size: 1.15rem !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .wall-note {
+    width: 200px !important;
+    max-width: 220px !important;
+    padding: 1rem;
+  }
+
+  .wall-note-content {
+    font-size: 0.85rem !important;
+    -webkit-line-clamp: 4 !important;
+    max-height: 100px !important;
+  }
+
+  .wall-note-name {
+    font-size: 0.75rem;
+  }
+
+  .display-title h1 {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .wall-note {
+    width: 160px !important;
+    max-width: 180px !important;
+    padding: 0.8rem;
+  }
+
+  .wall-note-content {
+    font-size: 0.8rem !important;
+    -webkit-line-clamp: 3 !important;
+    max-height: 80px !important;
+  }
+
+  .display-title h1 {
+    font-size: 1rem;
+  }
+
+  .page-dots {
+    bottom: 40px;
+  }
+
+  .page-dot {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* ============================================
+   Reduced motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .wall-page {
+    transition: opacity 0.3s ease;
+    transform: none !important;
+  }
+
+  .wall-page.active {
+    transform: none !important;
+  }
+
+  .wall-note {
+    animation: none;
+  }
+
+  .display-bg-orb {
+    animation: none;
+  }
+
+  .display-title h1 {
+    animation: none;
+  }
+}

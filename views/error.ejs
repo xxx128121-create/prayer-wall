@@ -1,44 +1,33 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>
-        <%= title %> - 教會祈禱牆
-    </title>
-    <link rel="stylesheet" href="/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — 教會祈禱牆</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-
 <body>
-    <header class="header">
-        <h1>🙏 教會祈禱牆</h1>
-        <p>一同代禱，彼此守望</p>
-    </header>
+  <header class="header">
+    <h1>教會祈禱牆</h1>
+    <div class="subtitle">一同代禱，彼此守望</div>
+  </header>
 
-    <nav class="nav">
-        <a href="/">📖 祈禱牆</a>
-        <a href="/submit">✍️ 提交代禱</a>
-    </nav>
+  <nav class="nav">
+    <a href="/">祈禱牆</a>
+    <a href="/submit">提交代禱</a>
+  </nav>
 
-    <main class="main">
-        <div class="card fade-in">
-            <h2 class="section-title">
-                <%= title %>
-            </h2>
-            <p>
-                <%= message %>
-            </p>
-            <div style="margin-top: 1rem;">
-                <a href="/" class="btn btn-primary">返回首頁</a>
-            </div>
-        </div>
-    </main>
+  <main class="main">
+    <div class="error-wrap fade-up">
+      <div class="empty-icon">&#x271D;</div>
+      <h2 class="error-title"><%= title %></h2>
+      <p class="error-msg"><%= message %></p>
+      <a href="/" class="btn btn-primary">返回首頁</a>
+    </div>
+  </main>
 
-    <footer class="footer">
-        <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %>
-        </p>
-    </footer>
+  <footer class="footer">
+    <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %></p>
+  </footer>
 </body>
-
 </html>

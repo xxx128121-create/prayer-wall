@@ -6,6 +6,15 @@ const { loginRateLimit, clearLoginAttempts } = require('../middleware/rate-limit
 const { logEvent, hashIP, EventTypes } = require('../middleware/logger');
 
 module.exports = function (db) {
+    function normalizeExpiryDate(input) {
+        if (!input || !/^\d{4}-\d{2}-\d{2}$/.test(input)) return null;
+        const selected = new Date(input + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selected < today) return null;
+        return input + ' 23:59:59';
+    }
+
     // Login page
     router.get('/login', (req, res) => {
         if (req.session && req.session.admin) {
@@ -160,6 +169,88 @@ module.exports = function (db) {
             adminUsername,
             ipHash: hashIP(req.ip),
             details: null
+        });
+
+        res.redirect('/admin');
+    });
+
+    // Set expiry date (approved)
+    router.post('/set-expiry/:id', requireAdmin, (req, res) => {
+        const prayerId = parseInt(req.params.id, 10);
+        const adminUsername = req.session.admin.username;
+        const expiresAt = normalizeExpiryDate(req.body.expiresAt);
+
+        const prayer = db.prayerOps.getById.get(prayerId);
+        if (!prayer || prayer.status !== 'APPROVED' || !expiresAt) {
+            return res.redirect('/admin');
+        }
+
+        db.prayerOps.setExpiryDate.run({ id: prayerId, expiresAt });
+        logEvent(EventTypes.ADMIN_SET_EXPIRY, { prayerId, adminUsername, ip: req.ip });
+        db.auditOps.log.run({
+            eventType: 'admin.set_expiry',
+            prayerId,
+            adminUsername,
+            ipHash: hashIP(req.ip),
+            details: JSON.stringify({ expiresAt })
+        });
+
+        res.redirect('/admin');
+    });
+
+    // Recover rejected prayer with expiry date
+    router.post('/recover/:id', requireAdmin, (req, res) => {
+        const prayerId = parseInt(req.params.id, 10);
+        const adminUsername = req.session.admin.username;
+        const expiresAt = normalizeExpiryDate(req.body.expiresAt);
+
+        const prayer = db.prayerOps.getById.get(prayerId);
+        if (!prayer || prayer.status !== 'REJECTED' || !expiresAt) {
+            return res.redirect('/admin');
+        }
+
+        db.prayerOps.recoverWithExpiry.run({ id: prayerId, adminUsername, expiresAt });
+        logEvent(EventTypes.ADMIN_RECOVER, { prayerId, adminUsername, ip: req.ip });
+        db.auditOps.log.run({
+            eventType: 'admin.recover',
+            prayerId,
+            adminUsername,
+            ipHash: hashIP(req.ip),
+            details: JSON.stringify({ expiresAt })
+        });
+
+        res.redirect('/admin');
+    });
+
+    // Edit prayer (pending/approved)
+    router.post('/edit/:id', requireAdmin, (req, res) => {
+        const prayerId = parseInt(req.params.id, 10);
+        const adminUsername = req.session.admin.username;
+        const displayName = req.body.displayName ? req.body.displayName.trim().substring(0, 50) : null;
+        const content = req.body.content ? req.body.content.trim() : '';
+
+        if (!content || content.length === 0 || content.length > 1000) {
+            return res.redirect('/admin');
+        }
+
+        const prayer = db.prayerOps.getById.get(prayerId);
+        if (!prayer || (prayer.status !== 'PENDING' && prayer.status !== 'APPROVED')) {
+            return res.redirect('/admin');
+        }
+
+        db.prayerOps.updateContent.run({
+            id: prayerId,
+            displayName: displayName || null,
+            content
+        });
+
+        logEvent(EventTypes.ADMIN_EDIT, { prayerId, adminUsername, ip: req.ip });
+        db.auditOps.log.run({
+            eventType: 'admin.edit',
+            prayerId,
+            adminUsername,
+            ipHash: hashIP(req.ip),
+            details: JSON.stringify({ updatedFields: ['display_name', 'content'] })
         });
 
         res.redirect('/admin');

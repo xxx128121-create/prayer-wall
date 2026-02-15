@@ -1,66 +1,33 @@
-<!DOCTYPE html>
-<html lang="zh-HK">
+﻿<%- include('partials/head', { title: '祈禱牆', description: '教會祈禱牆 - 一同代禱，彼此守望' }) %>
+<%- include('partials/header', { heroSubtitle: '一同代禱，彼此守望' }) %>
+<%- include('partials/nav', { title: '祈禱牆', admin: admin }) %>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="教會祈禱牆 - 一同代禱">
-    <title>祈禱牆 - 教會祈禱牆</title>
-    <link rel="stylesheet" href="/css/style.css">
-</head>
+<main class="main">
+  <% if (prayers.length === 0) { %>
+    <div class="empty-state fade-up">
+      <div class="empty-icon">&#x271D;</div>
+      <p class="empty-text">暫時未有代禱事項</p>
+      <a href="/submit" class="btn btn-gold">提交代禱</a>
+    </div>
+  <% } else { %>
+    <div class="prayers-grid">
+      <% prayers.forEach(function(prayer) { %>
+        <article class="card prayer-card">
+          <div class="card-header">
+            <span class="card-name">
+              <% if (prayer.display_name) { %>
+                <%= prayer.display_name %>
+              <% } else { %>
+                <span class="card-name-anon">匿名</span>
+              <% } %>
+            </span>
+            <span class="card-meta"><%= new Date(prayer.created_at).toLocaleDateString('zh-HK') %></span>
+          </div>
+          <div class="card-content"><%= prayer.content %></div>
+        </article>
+      <% }); %>
+    </div>
+  <% } %>
+</main>
 
-<body>
-    <header class="header">
-        <h1>🙏 教會祈禱牆</h1>
-        <p>一同代禱，彼此守望</p>
-    </header>
-
-    <nav class="nav">
-        <a href="/" class="active">📖 祈禱牆</a>
-        <a href="/submit">✍️ 提交代禱</a>
-        <% if (admin) { %>
-            <a href="/admin">⚙️ 管理後台</a>
-            <% } else { %>
-                <a href="/admin/login">🔐 Admin</a>
-                <% } %>
-    </nav>
-
-    <main class="main">
-        <% if (prayers.length===0) { %>
-            <div class="empty-state fade-in">
-                <div class="empty-state-icon">🙏</div>
-                <p class="empty-state-text">暫時未有代禱事項</p>
-                <a href="/submit" class="btn btn-primary" style="margin-top: 1rem;">提交代禱</a>
-            </div>
-            <% } else { %>
-                <div class="fade-in">
-                    <% prayers.forEach(function(prayer) { %>
-                        <article class="card prayer-card">
-                            <div class="card-header">
-                                <span class="card-title">
-                                    <% if (prayer.display_name) { %>
-                                        <%= prayer.display_name %>
-                                            <% } else { %>
-                                                <span class="prayer-anonymous">匿名</span>
-                                                <% } %>
-                                </span>
-                                <span class="card-meta">
-                                    <%= new Date(prayer.created_at).toLocaleDateString('zh-HK') %>
-                                </span>
-                            </div>
-                            <div class="card-content">
-                                <%= prayer.content %>
-                            </div>
-                        </article>
-                        <% }); %>
-                </div>
-                <% } %>
-    </main>
-
-    <footer class="footer">
-        <p>教會祈禱牆 &copy; <%= new Date().getFullYear() %>
-        </p>
-    </footer>
-</body>
-
-</html>
+<%- include('partials/footer') %>

@@ -1,0 +1,7 @@
+﻿<nav class="nav">
+  <a href="/" class="<%= activeAdmin === 'public' ? 'active' : '' %>">祈禱牆</a>
+  <a href="/submit" class="<%= activeAdmin === 'submit' ? 'active' : '' %>">提交代禱</a>
+  <a href="/admin" class="<%= activeAdmin === 'dashboard' ? 'active' : '' %>">管理後台</a>
+  <a href="/admin/digest" class="<%= activeAdmin === 'digest' ? 'active' : '' %>">生成摘要</a>
+  <a href="/admin/settings" class="<%= activeAdmin === 'settings' ? 'active' : '' %>">設定</a>
+</nav>

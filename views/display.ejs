@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;600;700&family=Noto+Serif+HK:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/display.css">
+</head>
+<body class="display-body">
+  <!-- Controls -->
+  <div class="display-controls">
+    <button class="display-control-btn" id="togglePause" title="暫停/播放">
+      <span class="pause-icon">&#10074;&#10074;</span>
+      <span class="play-icon" style="display:none;">&#9654;</span>
+    </button>
+    <button class="display-control-btn" id="prevPage" title="上一頁">&#10094;</button>
+    <button class="display-control-btn" id="nextPage" title="下一頁">&#10095;</button>
+    <a href="/" class="display-control-btn" title="返回">&#10005;</a>
+  </div>
+
+  <!-- Page indicator -->
+  <div class="page-indicator">
+    <span id="pageText">第 1 頁 / 共 1 頁</span>
+  </div>
+
+  <!-- Title -->
+  <div class="display-title">
+    <h1>教會祈禱牆</h1>
+  </div>
+
+  <!-- Lennon Wall Pages -->
+  <div class="wall-carousel" id="wallCarousel">
+    <% if (prayers.length === 0) { %>
+      <div class="wall-page active" data-page="0">
+        <div class="wall-empty">暫時未有代禱事項</div>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Page dots -->
+  <div class="page-dots" id="pageDots"></div>
+
+  <!-- Progress bar -->
+  <div class="carousel-progress">
+    <div class="carousel-progress-bar" id="progressBar"></div>
+  </div>
+
+  <!-- Background effects -->
+  <div class="display-bg">
+    <div class="display-bg-orb orb-1"></div>
+    <div class="display-bg-orb orb-2"></div>
+    <div class="display-bg-orb orb-3"></div>
+  </div>
+
+  <script>
+    (function() {
+      var prayers = <%- JSON.stringify(prayers).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %>;
+      var ITEMS_PER_PAGE = 9; // Max items per page to avoid overlap
+      var PAGE_DURATION = 10000; // 10 seconds per page
+
+      var totalPrayers = prayers.length;
+      var totalPages = Math.ceil(totalPrayers / ITEMS_PER_PAGE) || 1;
+      var currentPage = 0;
+      var isPaused = false;
+      var autoPlayInterval = null;
+
+      // Elements
+      var wallCarousel = document.getElementById('wallCarousel');
+      var pageDots = document.getElementById('pageDots');
+      var pageText = document.getElementById('pageText');
+      var progressBar = document.getElementById('progressBar');
+      var togglePauseBtn = document.getElementById('togglePause');
+      var prevPageBtn = document.getElementById('prevPage');
+      var nextPageBtn = document.getElementById('nextPage');
+      var pauseIcon = togglePauseBtn.querySelector('.pause-icon');
+      var playIcon = togglePauseBtn.querySelector('.play-icon');
+
+      console.log('Display initialized. Total prayers:', totalPrayers, 'Total pages:', totalPages);
+
+      // Build pages
+      function buildPages() {
+        if (totalPrayers === 0) return;
+
+        wallCarousel.innerHTML = '';
+        pageDots.innerHTML = '';
+
+        for (var pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+          // Create page container
+          var page = document.createElement('div');
+          page.className = 'wall-page' + (pageIndex === 0 ? ' active' : '');
+          page.dataset.page = pageIndex;
+
+          // Get prayers for this page
+          var startIdx = pageIndex * ITEMS_PER_PAGE;
+          var endIdx = Math.min(startIdx + ITEMS_PER_PAGE, totalPrayers);
+          var pageItems = prayers.slice(startIdx, endIdx);
+
+          // Create notes container
+          var notesContainer = document.createElement('div');
+          notesContainer.className = 'wall-notes-container';
+
+          pageItems.forEach(function(prayer, idx) {
+            var note = document.createElement('div');
+            note.className = 'wall-note';
+            note.style.setProperty('--delay', (idx * 0.08) + 's');
+            note.style.setProperty('--hue', ((startIdx + idx) * 47) % 360);
+
+            var content = document.createElement('div');
+            content.className = 'wall-note-content';
+            content.textContent = prayer.content;
+
+            // Dynamic font size based on content length
+            var contentLength = prayer.content.length;
+            if (contentLength < 20) {
+              note.classList.add('note-large');
+            } else if (contentLength < 50) {
+              note.classList.add('note-medium');
+            } else if (contentLength > 100) {
+              note.classList.add('note-small');
+            }
+
+            var name = document.createElement('div');
+            name.className = 'wall-note-name';
+            name.textContent = prayer.display_name ? '— ' + prayer.display_name : '— 匿名';
+
+            note.appendChild(content);
+            note.appendChild(name);
+            notesContainer.appendChild(note);
+          });
+
+          page.appendChild(notesContainer);
+          wallCarousel.appendChild(page);
+
+          // Create dot
+          var dot = document.createElement('span');
+          dot.className = 'page-dot' + (pageIndex === 0 ? ' active' : '');
+          dot.dataset.page = pageIndex;
+          dot.addEventListener('click', function() {
+            goToPage(parseInt(this.dataset.page, 10));
+          });
+          pageDots.appendChild(dot);
+        }
+
+        // Position notes on first page
+        positionNotes(0);
+        updatePageText();
+      }
+
+      // Position notes within a page using grid layout
+      function positionNotes(pageIndex) {
+        var page = wallCarousel.querySelector('.wall-page[data-page="' + pageIndex + '"]');
+        if (!page) return;
+
+        var notes = page.querySelectorAll('.wall-note');
+        var count = notes.length;
+        if (count === 0) return;
+
+        // Calculate grid: 3 columns max
+        var cols = Math.min(3, count);
+        var rows = Math.ceil(count / cols);
+
+        // Cell size percentages
+        var cellWidth = 90 / cols;
+        var cellHeight = 75 / rows;
+
+        notes.forEach(function(note, idx) {
+          var col = idx % cols;
+          var row = Math.floor(idx / cols);
+
+          // Base position
+          var baseX = 5 + (col * cellWidth) + (cellWidth / 2);
+          var baseY = 12 + (row * cellHeight) + (cellHeight / 2);
+
+          // Small random offset
+          var offsetX = (Math.random() - 0.5) * (cellWidth * 0.25);
+          var offsetY = (Math.random() - 0.5) * (cellHeight * 0.2);
+
+          var x = baseX + offsetX;
+          var y = baseY + offsetY;
+
+          // Random rotation
+          var rotation = (Math.random() - 0.5) * 6;
+
+          note.style.left = x + '%';
+          note.style.top = y + '%';
+          note.style.transform = 'translate(-50%, -50%) rotate(' + rotation + 'deg)';
+        });
+      }
+
+      // Show specific page
+      function goToPage(pageIndex) {
+        if (pageIndex < 0) pageIndex = totalPages - 1;
+        if (pageIndex >= totalPages) pageIndex = 0;
+
+        console.log('Going to page:', pageIndex);
+
+        // Update page visibility
+        var pages = wallCarousel.querySelectorAll('.wall-page');
+        pages.forEach(function(page, i) {
+          page.classList.remove('active', 'prev', 'next');
+          if (i === pageIndex) {
+            page.classList.add('active');
+          } else if (i < pageIndex) {
+            page.classList.add('prev');
+          } else {
+            page.classList.add('next');
+          }
+        });
+
+        // Update dots
+        var dots = pageDots.querySelectorAll('.page-dot');
+        dots.forEach(function(dot, i) {
+          dot.classList.toggle('active', i === pageIndex);
+        });
+
+        currentPage = pageIndex;
+        positionNotes(pageIndex);
+        updatePageText();
+        resetProgress();
+      }
+
+      function nextPage() {
+        goToPage((currentPage + 1) % totalPages);
+      }
+
+      function prevPage() {
+        goToPage((currentPage - 1 + totalPages) % totalPages);
+      }
+
+      function updatePageText() {
+        pageText.textContent = '第 ' + (currentPage + 1) + ' 頁 / 共 ' + totalPages + ' 頁';
+      }
+
+      function resetProgress() {
+        if (!progressBar) return;
+        progressBar.style.transition = 'none';
+        progressBar.style.width = '0%';
+        void progressBar.offsetWidth;
+        progressBar.style.transition = 'width ' + PAGE_DURATION + 'ms linear';
+        progressBar.style.width = '100%';
+      }
+
+      function startAutoPlay() {
+        stopAutoPlay();
+        resetProgress();
+        autoPlayInterval = setInterval(function() {
+          if (!isPaused) {
+            nextPage();
+          }
+        }, PAGE_DURATION);
+      }
+
+      function stopAutoPlay() {
+        if (autoPlayInterval) {
+          clearInterval(autoPlayInterval);
+          autoPlayInterval = null;
+        }
+      }
+
+      // Event listeners
+      togglePauseBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        isPaused = !isPaused;
+
+        if (isPaused) {
+          pauseIcon.style.display = 'none';
+          playIcon.style.display = 'inline';
+          stopAutoPlay();
+          progressBar.style.transition = 'none';
+        } else {
+          pauseIcon.style.display = 'inline';
+          playIcon.style.display = 'none';
+          startAutoPlay();
+        }
+      });
+
+      prevPageBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        prevPage();
+        if (!isPaused) startAutoPlay();
+      });
+
+      nextPageBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        nextPage();
+        if (!isPaused) startAutoPlay();
+      });
+
+      // Keyboard controls
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight') {
+          nextPage();
+          if (!isPaused) startAutoPlay();
+        } else if (e.key === 'ArrowLeft') {
+          prevPage();
+          if (!isPaused) startAutoPlay();
+        } else if (e.key === ' ') {
+          e.preventDefault();
+          togglePauseBtn.click();
+        } else if (e.key === 'Escape') {
+          window.location.href = '/';
+        }
+      });
+
+      // Initialize
+      buildPages();
+      if (totalPages > 1) {
+        startAutoPlay();
+      } else {
+        progressBar.style.display = 'none';
+      }
+
+      // Auto-refresh every 5 minutes
+      setTimeout(function() {
+        window.location.reload();
+      }, 5 * 60 * 1000);
+    })();
+  </script>
+</body>
+</html>

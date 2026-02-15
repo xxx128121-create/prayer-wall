@@ -13,5 +13,15 @@ module.exports = function (db) {
         });
     });
 
+    // Display mode - full screen projection view
+    router.get('/display', (req, res) => {
+        const prayers = db.prayerOps.getApproved.all();
+
+        res.render('display', {
+            title: '祈禱牆 - 投影模式',
+            prayers
+        });
+    });
+
     return router;
 };
