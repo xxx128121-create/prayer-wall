@@ -3,13 +3,17 @@ node_modules/
 
 # Environment variables (IMPORTANT: never commit!)
 .env
+.env.*
+!.env.example
 
 # Database
+db/
 db/*.db
 db/*.db-wal
 db/*.db-shm
 
 # Logs
+logs/
 logs/*.jsonl
 logs/*.log
 
