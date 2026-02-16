@@ -22,7 +22,7 @@ npm install
 
 ### 2. 設定
 
-建立 `.env` 並填入以下內容：
+建立 `.env` 並填入以下內容（本機開發可用 SQLite；正式環境建議 Supabase/Postgres）：
 
 ```env
 PORT=3000
@@ -30,12 +30,16 @@ SESSION_SECRET=your-super-secret-session-key-change-this
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=changeme123
 NODE_ENV=production
+STORAGE_BACKEND=supabase
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
 ```
 
 重要設定：
-- `SESSION_SECRET`: 改成一個長的隨機字串
+- `SESSION_SECRET`: 改成一個長的隨機字串（用來簽署 session）
 - `ADMIN_USERNAME`: Admin 帳號
 - `ADMIN_PASSWORD`: Admin 密碼（第一次啟動後會 hash 存入 database）
+- `STORAGE_BACKEND`: 設為 `supabase`
+- `DATABASE_URL`: 使用 Supabase 提供的連線字串（建議用 Pooler 版本）
 
 ### 3. 啟動
 
@@ -44,40 +48,6 @@ npm start
 ```
 
 打開瀏覽器：`http://localhost:3000`
-
-## 使用 Google Sheets 當資料庫（可選）
-
-如果你想用 Google Sheets（每個狀態一個工作表），請加以下環境變數：
-
-```env
-STORAGE_BACKEND=google_sheets
-GOOGLE_SHEETS_ID=your_sheet_id
-GOOGLE_SERVICE_ACCOUNT_EMAIL=service-account@project.iam.gserviceaccount.com
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-```
-
-預設工作表名稱：
-- `PENDING`
-- `APPROVED`
-- `EXPIRED`
-- `REJECTED`
-- `ADMINS`
-- `LOGS`
-
-你可以自訂名稱（可選）：
-
-```env
-SHEETS_TAB_PENDING=Pending
-SHEETS_TAB_APPROVED=Approved
-SHEETS_TAB_EXPIRED=Expired
-SHEETS_TAB_REJECTED=Rejected
-SHEETS_TAB_ADMINS=Admins
-SHEETS_TAB_LOGS=Logs
-```
-
-注意：
-- 請把你的 Google Sheet 分享給 Service Account 的 email（至少可編輯權限）。
-- 第一次啟動會自動建立表格欄位與 Admin 帳號。
 
 ## 使用 Supabase/Postgres 當資料庫（推薦）
 
@@ -92,14 +62,6 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
 - `DATABASE_URL` 使用 Supabase 提供的連線字串（建議用 Pooler 版本）。
 - Supabase 預設需要 SSL。如果你的環境不能用 SSL，可加 `PGSSLMODE=disable`（不建議在正式環境使用）。
 - 第一次啟動會自動建立資料表與 Admin 帳號。
-
-### 從 Google Sheets 搬遷到 Supabase
-
-先確保 `.env` 同時有 Google Sheets 和 `DATABASE_URL`：
-
-```bash
-node scripts/migrate-sheets-to-postgres.js --truncate
-```
 
 ## 使用說明
 
@@ -119,14 +81,9 @@ node scripts/migrate-sheets-to-postgres.js --truncate
 
 ## 備份
 
-Database 係一個 file：`db/prayer-wall.db`
+如果使用 Supabase/Postgres，請用 Supabase Dashboard 的備份或使用 Postgres 備份工具（如 `pg_dump`）。
 
-定期 copy 呢個 file 就可以完整備份。
-
-```powershell
-# Windows - 備份到桌面
-copy db\prayer-wall.db %USERPROFILE%\Desktop\prayer-wall-backup.db
-```
+如果本機開發使用 SQLite，Database 係一個 file：`db/prayer-wall.db`。
 
 ## 搬遷
 
