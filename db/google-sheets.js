@@ -206,7 +206,21 @@ async function initGoogleSheets() {
     });
   }
 
-  async function overwriteRows(title, headers, rows) {
+  function buildRange(title, headers, startRow, endRow) {
+    const endColumn = String.fromCharCode(64 + headers.length);
+    return `${title}!A${startRow}:${endColumn}${endRow}`;
+  }
+
+  async function clearRows(title, headers, startRow, endRow) {
+    if (endRow < startRow) return;
+    const range = buildRange(title, headers, startRow, endRow);
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range
+    });
+  }
+
+  async function overwriteRows(title, headers, rows, previousCount) {
     await ensureHeaders(title, headers);
     const range = `${title}!A2:${String.fromCharCode(64 + headers.length)}`;
     const values = rows.map((row) => buildRow(headers, row));
@@ -216,16 +230,22 @@ async function initGoogleSheets() {
       valueInputOption: 'RAW',
       requestBody: { values }
     });
+    if (previousCount && previousCount > rows.length) {
+      const startRow = rows.length + 2;
+      const endRow = previousCount + 1;
+      await clearRows(title, headers, startRow, endRow);
+    }
   }
 
   async function moveRowById(fromTitle, toTitle, headers, id, mutate) {
     const rows = await readAllRows(fromTitle, headers);
+    const previousCount = rows.length;
     const index = rows.findIndex((r) => String(r.id) === String(id));
     if (index === -1) return null;
     const row = rows[index];
     rows.splice(index, 1);
     if (mutate) mutate(row);
-    await overwriteRows(fromTitle, headers, rows);
+    await overwriteRows(fromTitle, headers, rows, previousCount);
     await appendRow(toTitle, headers, row);
     return row;
   }
@@ -241,6 +261,7 @@ async function initGoogleSheets() {
 
   async function refreshExpired() {
     const rows = await readAllRows(tabs.approved, PRAYER_HEADERS);
+    const previousCount = rows.length;
     const now = Date.now();
     const active = [];
     const expired = [];
@@ -254,7 +275,7 @@ async function initGoogleSheets() {
       }
     }
     if (expired.length > 0) {
-      await overwriteRows(tabs.approved, PRAYER_HEADERS, active);
+      await overwriteRows(tabs.approved, PRAYER_HEADERS, active, previousCount);
       for (const row of expired) {
         await appendRow(tabs.expired, PRAYER_HEADERS, row);
       }
@@ -590,8 +611,9 @@ async function initGoogleSheets() {
     delete: {
       run: async (id) => {
         const rows = await readAllRows(tabs.admins, ADMIN_HEADERS);
+        const previousCount = rows.length;
         const filtered = rows.filter((r) => String(r.id) !== String(id));
-        await overwriteRows(tabs.admins, ADMIN_HEADERS, filtered);
+        await overwriteRows(tabs.admins, ADMIN_HEADERS, filtered, previousCount);
         return { changes: rows.length - filtered.length };
       }
     },
