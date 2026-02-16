@@ -133,6 +133,8 @@ async function initGoogleSheets() {
 
   const sheets = google.sheets({ version: 'v4', auth });
   const tabs = pickTabsFromEnv();
+  const ensuredSheets = new Set();
+  const ensuringSheets = new Map();
 
   async function getSheetTitles() {
     const res = await sheets.spreadsheets.get({
@@ -154,17 +156,33 @@ async function initGoogleSheets() {
   }
 
   async function ensureHeaders(title, headers) {
-    await ensureSheet(title);
-    const range = `${title}!A1:${String.fromCharCode(64 + headers.length)}1`;
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId, range });
-    const existing = res.data.values && res.data.values[0] ? res.data.values[0] : [];
-    if (existing.length === 0) {
-      await sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range,
-        valueInputOption: 'RAW',
-        requestBody: { values: [headers] }
-      });
+    if (ensuredSheets.has(title)) return;
+    if (ensuringSheets.has(title)) {
+      await ensuringSheets.get(title);
+      return;
+    }
+
+    const task = (async () => {
+      await ensureSheet(title);
+      const range = `${title}!A1:${String.fromCharCode(64 + headers.length)}1`;
+      const res = await sheets.spreadsheets.values.get({ spreadsheetId, range });
+      const existing = res.data.values && res.data.values[0] ? res.data.values[0] : [];
+      if (existing.length === 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range,
+          valueInputOption: 'RAW',
+          requestBody: { values: [headers] }
+        });
+      }
+      ensuredSheets.add(title);
+    })();
+
+    ensuringSheets.set(title, task);
+    try {
+      await task;
+    } finally {
+      ensuringSheets.delete(title);
     }
   }
 
