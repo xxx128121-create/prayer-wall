@@ -2,6 +2,8 @@ require('dotenv').config();
 
 const express = require('express');
 const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
+const { getPool } = require('./db/pg-pool');
 const helmet = require('helmet');
 const csrf = require('csurf');
 const path = require('path');
@@ -45,7 +47,7 @@ dbReady.then((db) => {
   }
 
   // Session configuration
-  app.use(session({
+  const sessionOptions = {
       secret: process.env.SESSION_SECRET || 'prayer-wall-secret-change-this',
       resave: false,
       saveUninitialized: false,
@@ -55,7 +57,19 @@ dbReady.then((db) => {
           httpOnly: true,
           maxAge: 24 * 60 * 60 * 1000 // 24 hours
       }
-  }));
+  };
+
+  if (process.env.DATABASE_URL) {
+      const pool = getPool();
+      sessionOptions.store = new PgSession({
+          pool,
+          createTableIfMissing: true
+      });
+  } else if (process.env.NODE_ENV === 'production') {
+      console.warn('[Session] DATABASE_URL not set. Using MemoryStore (not recommended for production).');
+  }
+
+  app.use(session(sessionOptions));
 
   // CSRF protection
   app.use(csrf());

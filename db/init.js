@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 const initGoogleSheets = require('./google-sheets');
+const initPostgres = require('./postgres');
 
 // Ensure db directory exists
 const dbDir = path.join(__dirname);
@@ -363,6 +364,8 @@ async function initDatabase() {
 
 if (process.env.STORAGE_BACKEND === 'google_sheets') {
   module.exports = initGoogleSheets();
+} else if (process.env.STORAGE_BACKEND === 'supabase' || process.env.STORAGE_BACKEND === 'postgres') {
+  module.exports = initPostgres();
 } else {
   module.exports = initDatabase();
 }

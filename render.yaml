@@ -15,3 +15,5 @@ services:
         value: admin
       - key: ADMIN_PASSWORD
         value: change-me-now
+      - key: STORAGE_BACKEND
+        value: supabase

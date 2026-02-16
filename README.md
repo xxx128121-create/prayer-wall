@@ -79,6 +79,28 @@ SHEETS_TAB_LOGS=Logs
 - 請把你的 Google Sheet 分享給 Service Account 的 email（至少可編輯權限）。
 - 第一次啟動會自動建立表格欄位與 Admin 帳號。
 
+## 使用 Supabase/Postgres 當資料庫（推薦）
+
+如果你想要更穩定、可擴充的資料庫，同時仍然可以用 Supabase 的 Table View 作為「像試算表」的管理介面：
+
+```env
+STORAGE_BACKEND=supabase
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+```
+
+注意：
+- `DATABASE_URL` 使用 Supabase 提供的連線字串（建議用 Pooler 版本）。
+- Supabase 預設需要 SSL。如果你的環境不能用 SSL，可加 `PGSSLMODE=disable`（不建議在正式環境使用）。
+- 第一次啟動會自動建立資料表與 Admin 帳號。
+
+### 從 Google Sheets 搬遷到 Supabase
+
+先確保 `.env` 同時有 Google Sheets 和 `DATABASE_URL`：
+
+```bash
+node scripts/migrate-sheets-to-postgres.js --truncate
+```
+
 ## 使用說明
 
 ### 會眾
@@ -123,6 +145,8 @@ copy db\prayer-wall.db %USERPROFILE%\Desktop\prayer-wall-backup.db
 # 查看最新 20 行
 Get-Content logs\app.jsonl -Tail 20
 ```
+
+如果你使用 Supabase/Postgres，請用 Supabase Dashboard 或資料庫工具做定期備份。
 
 ## 安全設計
 
