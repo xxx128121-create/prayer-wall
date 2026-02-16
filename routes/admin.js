@@ -197,6 +197,26 @@ module.exports = function (db) {
         res.redirect('/admin');
     });
 
+    // Approve all pending prayers
+    router.post('/approve-all', requireAdmin, async (req, res) => {
+        const adminUsername = req.session.admin.username;
+        const result = await db.prayerOps.approveAll.run({ adminUsername });
+        const changes = result && typeof result.changes === 'number' ? result.changes : 0;
+
+        if (changes > 0) {
+            logEvent(EventTypes.ADMIN_APPROVE, { adminUsername, count: changes, bulk: true });
+            await db.auditOps.log.run({
+                eventType: EventTypes.ADMIN_APPROVE,
+                prayerId: null,
+                adminUsername,
+                ipHash: hashIP(req.ip),
+                details: JSON.stringify({ bulk: true, count: changes })
+            });
+        }
+
+        res.redirect('/admin');
+    });
+
     // Set expiry date (approved)
     router.post('/set-expiry/:id', requireAdmin, async (req, res) => {
         const prayerId = parseInt(req.params.id, 10);

@@ -276,6 +276,15 @@ async function initDatabase() {
       WHERE id = @id AND status = 'PENDING'
     `),
 
+    approveAll: prepare(`
+      UPDATE prayers
+      SET status = 'APPROVED',
+          approved_at = CURRENT_TIMESTAMP,
+          approved_by = @adminUsername,
+          expires_at = datetime('now', '+' || COALESCE(duration_days, 7) || ' days')
+      WHERE status = 'PENDING'
+    `),
+
     reject: prepare(`
       UPDATE prayers
       SET status = 'REJECTED', approved_at = CURRENT_TIMESTAMP, approved_by = @adminUsername

@@ -48,6 +48,12 @@
         <p class="empty-text">暫無待審批項目</p>
       </div>
     <% } else { %>
+      <div class="btn-group" style="margin-bottom:12px;">
+        <form method="POST" action="/admin/approve-all" style="flex:1;" onsubmit="return confirm('確認全部批准？');">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn btn-success btn-block btn-sm">全部批准</button>
+        </form>
+      </div>
       <div class="prayer-list">
         <% pendingPrayers.forEach(function(prayer) { %>
           <article class="card">

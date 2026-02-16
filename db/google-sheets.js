@@ -206,6 +206,19 @@ async function initGoogleSheets() {
     });
   }
 
+  async function appendRows(title, headers, rows) {
+    if (!rows || rows.length === 0) return;
+    await ensureHeaders(title, headers);
+    const values = rows.map((row) => buildRow(headers, row));
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `${title}!A1`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values }
+    });
+  }
+
   function buildRange(title, headers, startRow, endRow) {
     const endColumn = String.fromCharCode(64 + headers.length);
     return `${title}!A${startRow}:${endColumn}${endRow}`;
@@ -454,6 +467,28 @@ async function initGoogleSheets() {
           row.expires_at = addDays(row.approved_at, Number(row.duration_days || 7));
         });
         return { changes: moved ? 1 : 0 };
+      }
+    },
+    approveAll: {
+      run: async (params) => {
+        const data = {};
+        for (const [key, value] of Object.entries(params || {})) {
+          data[normalizeKey(key)] = value;
+        }
+        const rows = await readAllRows(tabs.pending, PRAYER_HEADERS);
+        if (rows.length === 0) return { changes: 0 };
+        const approvedAt = nowIso();
+        const adminUsername = data.adminUsername || '';
+        for (const row of rows) {
+          row.status = 'APPROVED';
+          row.approved_at = approvedAt;
+          row.approved_by = adminUsername;
+          row.expires_at = addDays(approvedAt, Number(row.duration_days || 7));
+        }
+        const previousCount = rows.length;
+        await overwriteRows(tabs.pending, PRAYER_HEADERS, [], previousCount);
+        await appendRows(tabs.approved, PRAYER_HEADERS, rows);
+        return { changes: rows.length };
       }
     },
     reject: {
